@@ -1,6 +1,8 @@
 # FraudDetection PS5
-Detect Fraud in a large dataset
+Detect Fraud in a large dataset using an Express Web Server and Node
 Use this schema in sampleData.json for transactions
+The user interface should allow monitoring of Agent and Tool calls 
+and display of fraudulent transactions in near real time. 
 
 You should create around 100 transactions with a few that are fraudulent in each batch. 
 ## High-Level Architecture
@@ -11,8 +13,8 @@ Input: Stream/list of transactions
 
 Chunking: Split into batches of 20
 
-Parallel LLM Calls: Send each batch to the model concurrently
+Parallel Agent/LLM Calls: Send each batch to the model concurrently
 
-Aggregation: Collect suspicious transactions
+Aggregation: Write suspicious transactions into a file  and to the UI via a suspiciousTransactions Tool.
 
-Single Write: Write all suspicious transactions to one file via a Tool
+
