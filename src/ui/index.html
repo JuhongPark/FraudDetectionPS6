@@ -349,18 +349,19 @@
       border-left: 3px solid var(--accent-orange);
       border-radius: 4px;
       font-size: 13px;
-      animation: slideIn 0.3s ease-out;
     }
 
-    @keyframes slideIn {
+    @keyframes subtleNewItem {
       from {
-        opacity: 0;
-        background: rgba(251, 188, 4, 0.2);
+        background: rgba(251, 188, 4, 0.28);
       }
       to {
-        opacity: 1;
         background: rgba(0, 0, 0, 0.2);
       }
+    }
+
+    .suspicious-item.new-entry {
+      animation: subtleNewItem 1s ease-out 1;
     }
 
     .suspicious-id {
@@ -532,6 +533,8 @@
     const timelineList = document.getElementById('timelineList');
 
     let batchStates = {};
+    let seenSuspiciousIds = new Set();
+    let lastFlashTs = 0;
 
     function getAgentIcon(type) {
       const icons = {
@@ -717,14 +720,22 @@
         suspiciousContainer.style.display = 'none';
       } else {
         suspiciousContainer.style.display = 'flex';
+        const now = Date.now();
         suspiciousList.innerHTML = items
           .map(item => `
-            <div class="suspicious-item">
+            <div class="suspicious-item ${(!seenSuspiciousIds.has(item.id) && now - lastFlashTs > 3000) ? 'new-entry' : ''}">
               <span class="suspicious-id">${item.id}</span>
               <span class="suspicious-reason">${item.reason}</span>
             </div>
           `)
           .join('');
+
+        for (const item of items) {
+          if (!seenSuspiciousIds.has(item.id) && now - lastFlashTs > 3000) {
+            lastFlashTs = now;
+          }
+          seenSuspiciousIds.add(item.id);
+        }
       }
     }
 
@@ -764,6 +775,8 @@
     runBtn.addEventListener('click', async () => {
       await fetch('/api/run', { method: 'POST' });
       batchStates = {};
+      seenSuspiciousIds = new Set();
+      lastFlashTs = 0;
       refresh();
     });
 
