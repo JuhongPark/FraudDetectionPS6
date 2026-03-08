@@ -42,6 +42,10 @@ npm start
 2. Open `http://127.0.0.1:8000`
 3. Click `Run Pipeline`
 
+If `8000` is already in use:
+- set `PORT` in `.env`, or
+- run `PORT=8001 npm start`
+
 ## Test
 ```bash
 npm test

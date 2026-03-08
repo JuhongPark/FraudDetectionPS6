@@ -193,16 +193,31 @@ app.post("/api/run", async (req, res) => {
   });
 });
 
-// Start server
-const server = app.listen(port, host, () => {
-  console.log(`\n🚀 Fraud Detection Monitor`);
-  console.log(`📊 http://${host}:${port}`);
-  console.log(`🔗 API: http://${host}:${port}/api/status\n`);
-});
+function startServer(initialPort) {
+  let currentPort = initialPort;
 
-server.on("error", (error) => {
-  console.error("Server failed to start:", error.message);
-  process.exit(1);
-});
+  const tryListen = () => {
+    const server = app.listen(currentPort, host, () => {
+      console.log(`\n🚀 Fraud Detection Monitor`);
+      console.log(`📊 http://${host}:${currentPort}`);
+      console.log(`🔗 API: http://${host}:${currentPort}/api/status\n`);
+    });
+
+    server.on("error", (error) => {
+      if (error.code === "EADDRINUSE" && !process.env.PORT) {
+        currentPort += 1;
+        console.warn(`Port in use, retrying on ${currentPort}...`);
+        tryListen();
+        return;
+      }
+      console.error("Server failed to start:", error.message);
+      process.exit(1);
+    });
+  };
+
+  tryListen();
+}
+
+startServer(port);
 
 module.exports = { app, config, appState };
