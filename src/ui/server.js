@@ -6,6 +6,7 @@ const { generateTransactions } = require("../scripts/generateTransactions");
 
 const app = express();
 const port = 8000;
+const host = process.env.HOST || "127.0.0.1";
 
 // Configuration
 const config = {
@@ -193,10 +194,15 @@ app.post("/api/run", async (req, res) => {
 });
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, host, () => {
   console.log(`\n🚀 Fraud Detection Monitor`);
-  console.log(`📊 http://127.0.0.1:${port}`);
-  console.log(`🔗 API: http://127.0.0.1:${port}/api/status\n`);
+  console.log(`📊 http://${host}:${port}`);
+  console.log(`🔗 API: http://${host}:${port}/api/status\n`);
+});
+
+server.on("error", (error) => {
+  console.error("Server failed to start:", error.message);
+  process.exit(1);
 });
 
 module.exports = { app, config, appState };
