@@ -30,7 +30,7 @@ def _get_openai_client() -> OpenAI:
 
 def _get_model() -> str:
     """Get OpenAI model name from environment, with sensible default."""
-    return os.getenv("OPENAI_MODEL", "gpt-4o")
+    return os.getenv("OPENAI_MODEL", "gpt-5.3")
 
 
 class SignalMiner:
