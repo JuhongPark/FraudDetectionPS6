@@ -7,7 +7,7 @@ const {
   riskScorerAgent,
   evidenceAuditorAgent,
 } = require("../agents/fraudDetectionAgents");
-const { writeSuspiciousTransactions } = require("../tools/tools");
+const { writeSuspiciousTransactions, streamUiEvent } = require("../tools/tools");
 
 function chunkTransactions(transactions, batchSize = 20) {
   const batches = [];
@@ -27,6 +27,7 @@ class FraudPipeline {
     this.riskScorer = deps.riskScorerAgent || riskScorerAgent;
     this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
     this.writeSuspicious = deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
+    this.uiEventStream = deps.streamUiEvent || streamUiEvent;
   }
 
   on(event, listener) {
@@ -94,6 +95,35 @@ class FraudPipeline {
     });
 
     try {
+      this.eventEmitter.emit("tool_call_started", {
+        batch_id: batchId,
+        tool: "ui_event_stream",
+        tool_label: "ui_event_stream Tool",
+        activity: "Streaming batch heartbeat event",
+      });
+      const uiStreamResult = await this.uiEventStream(
+        {
+          event_type: "ui_stream_event",
+          payload: {
+            batch_id: batchId,
+            stage: "batch_check_started",
+          },
+        },
+        this.eventEmitter
+      );
+      this.eventEmitter.emit("tool_call_finished", {
+        batch_id: batchId,
+        tool: "ui_event_stream",
+        tool_label: "ui_event_stream Tool",
+        activity: "Batch heartbeat streamed",
+        status: uiStreamResult?.status || "ok",
+      });
+      this.eventEmitter.emit("tool_executed", {
+        batch_id: batchId,
+        tool: "ui_event_stream",
+        tool_label: "ui_event_stream Tool",
+      });
+
       // Run Signal Miner
       const candidates = await this.signalMiner(
         batch,
@@ -125,37 +155,35 @@ class FraudPipeline {
         this.eventEmitter
       );
 
-      // Emit suspicious transactions via Tool
-      if (confirmed.length > 0) {
-        this.eventEmitter.emit("tool_call_started", {
-          batch_id: batchId,
-          tool: "suspiciousTransactions",
-          tool_label: "suspiciousTransactions Tool",
-          record_count: confirmed.length,
-          activity: "Persisting confirmed suspicious transactions",
-        });
+      // Emit suspicious transactions via Tool (always, even when empty)
+      this.eventEmitter.emit("tool_call_started", {
+        batch_id: batchId,
+        tool: "suspiciousTransactions",
+        tool_label: "suspiciousTransactions Tool",
+        record_count: confirmed.length,
+        activity: "Persisting confirmed suspicious transactions",
+      });
 
-        const toolResult = await this.writeSuspicious({
-          transactions: confirmed,
-          output_file: this.config.suspiciousFile,
-        });
+      const toolResult = await this.writeSuspicious({
+        transactions: confirmed,
+        output_file: this.config.suspiciousFile,
+      });
 
-        this.eventEmitter.emit("tool_call_finished", {
-          batch_id: batchId,
-          tool: toolResult.tool,
-          tool_label: "suspiciousTransactions Tool",
-          written: toolResult.written,
-          total: toolResult.total,
-          activity: "Suspicious transaction persistence completed",
-        });
-        this.eventEmitter.emit("tool_executed", {
-          batch_id: batchId,
-          tool: toolResult.tool,
-          tool_label: "suspiciousTransactions Tool",
-          written: toolResult.written,
-          total: toolResult.total
-        });
-      }
+      this.eventEmitter.emit("tool_call_finished", {
+        batch_id: batchId,
+        tool: toolResult.tool,
+        tool_label: "suspiciousTransactions Tool",
+        written: toolResult.written,
+        total: toolResult.total,
+        activity: "Suspicious transaction persistence completed",
+      });
+      this.eventEmitter.emit("tool_executed", {
+        batch_id: batchId,
+        tool: toolResult.tool,
+        tool_label: "suspiciousTransactions Tool",
+        written: toolResult.written,
+        total: toolResult.total
+      });
 
       // Also emit individual events for UI
       for (const item of confirmed) {
