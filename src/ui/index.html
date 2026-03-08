@@ -696,6 +696,13 @@
       return icons[type] || '○';
     }
 
+    function formatArrowLabel(label) {
+      if (!label || !String(label).includes('->')) return String(label || '');
+      const parts = String(label).split(/\s*->\s*/);
+      if (parts.length < 2) return String(label);
+      return `${parts[0]} -><br>${parts.slice(1).join(' -> ')}`;
+    }
+
     function renderBatchCard(batchId, state, opts = {}) {
       const cardClass = [
         'batch-card',
@@ -734,7 +741,7 @@
           return `
             <div class="tool-row">
               <span class="icon">${icon}</span>
-              <span class="name">${t.label || t.tool}</span>
+              <span class="name">${formatArrowLabel(t.label || t.tool)}</span>
               <span class="meta">${metaParts.join(' | ')}</span>
             </div>
           `;
@@ -959,7 +966,7 @@
 
     function renderActivity(states) {
       const makeActivity = (label, msg) =>
-        `<div class="activity-item"><div class="activity-label">${label}</div><div class="activity-msg">${msg}</div></div>`;
+        `<div class="activity-item"><div class="activity-label">${formatArrowLabel(label)}</div><div class="activity-msg">${msg}</div></div>`;
       const active = Object.values(states).flatMap((s) => {
         const out = [];
         if (s.signalMinerStatus === 'running') {
