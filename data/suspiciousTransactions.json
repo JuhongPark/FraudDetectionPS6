@@ -1,11 +1,11 @@
 [
   {
     "id": "txn_2004",
-    "reason": "confirmed: crypto merchant + high amount (4450.00)"
+    "reason": "High transaction amount with a cryptocurrency merchant and transaction made through an unknown VPN"
   },
   {
     "id": "txn_2011",
-    "reason": "confirmed: crypto merchant + high amount (4700.00)"
+    "reason": "Card not present during transaction and transaction made through an unknown VPN"
   },
   {
     "id": "txn_2017",
@@ -13,11 +13,11 @@
   },
   {
     "id": "txn_2024",
-    "reason": "confirmed: crypto merchant + high amount (5100.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN"
   },
   {
     "id": "txn_2031",
-    "reason": "confirmed: crypto merchant + high amount (5350.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN + card not present"
   },
   {
     "id": "txn_2037",
@@ -25,11 +25,11 @@
   },
   {
     "id": "txn_2044",
-    "reason": "confirmed: crypto merchant + high amount (6500.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN"
   },
   {
     "id": "txn_2051",
-    "reason": "confirmed: crypto merchant + high amount (6000.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN + card not present"
   },
   {
     "id": "txn_2057",
@@ -37,11 +37,11 @@
   },
   {
     "id": "txn_2064",
-    "reason": "confirmed: very high amount (7150.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN"
   },
   {
     "id": "txn_2071",
-    "reason": "confirmed: very high amount (7400.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN + card not present"
   },
   {
     "id": "txn_2077",
@@ -49,11 +49,11 @@
   },
   {
     "id": "txn_2084",
-    "reason": "confirmed: very high amount (7800.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN"
   },
   {
     "id": "txn_2091",
-    "reason": "confirmed: very high amount (8050.00)"
+    "reason": "confirmed: high amount + crypto merchant + unknown VPN + card not present"
   },
   {
     "id": "txn_2097",
