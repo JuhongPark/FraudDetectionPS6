@@ -16,7 +16,7 @@ Node.js fraud-detection demo using `@openai/agents`.
 ## Setup
 1. Install dependencies:
 ```bash
-npm ci
+npm install
 ```
 
 2. Create env file:
