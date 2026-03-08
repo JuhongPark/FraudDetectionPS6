@@ -33,7 +33,7 @@ To use the OpenAI LLM for fraud detection, configure your API key:
 2. Edit `.env` and add your OpenAI API key:
    ```
    OPENAI_API_KEY=...
-   OPENAI_MODEL=gpt-4-turbo
+   OPENAI_MODEL=gpt-5.3
    ```
 
 3. **Note**: The `.env` file is excluded from version control (see `.gitignore`). Only `.env.example` is committed.
