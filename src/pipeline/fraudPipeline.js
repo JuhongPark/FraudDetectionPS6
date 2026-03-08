@@ -23,8 +23,8 @@ class FraudPipeline {
     this.eventEmitter = new EventEmitter();
     this.suspiciousTransactions = [];
     this.signalMiner = deps.signalMinerAgent || signalMinerAgent;
-    this.patternProfiler = deps.patternProfilerAgent || (async (_batch, candidates) => candidates);
-    this.riskScorer = deps.riskScorerAgent || (async (_batch, profiled) => profiled);
+    this.patternProfiler = deps.patternProfilerAgent || patternProfilerAgent;
+    this.riskScorer = deps.riskScorerAgent || riskScorerAgent;
     this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
     this.writeSuspicious = deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
   }

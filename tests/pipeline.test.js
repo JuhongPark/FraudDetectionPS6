@@ -21,12 +21,18 @@ test('pipeline processes 100 records into 5 parallel batches and writes suspicio
   fs.writeFileSync(inputFile, JSON.stringify(txns, null, 2));
 
   const fakeSignalMiner = async (batch) => batch.slice(0, 1).map((x) => ({ id: x.id, reason: 'candidate' }));
+  const fakePatternProfiler = async (_batch, candidates) =>
+    candidates.map((x) => ({ ...x, geo_risk: 10, signals: ['test_signal'] }));
+  const fakeRiskScorer = async (_batch, profiled) =>
+    profiled.map((x) => ({ ...x, risk_score: 55, priority: 'medium' }));
   const fakeEvidence = async (_batch, candidates) => candidates.map((x) => ({ id: x.id, reason: 'confirmed' }));
 
   const pipeline = new FraudPipeline(
     { inputFile, suspiciousFile, batchSize: 20, maxWorkers: 5 },
     {
       signalMinerAgent: fakeSignalMiner,
+      patternProfilerAgent: fakePatternProfiler,
+      riskScorerAgent: fakeRiskScorer,
       evidenceAuditorAgent: fakeEvidence,
     }
   );
