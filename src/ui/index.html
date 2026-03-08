@@ -211,9 +211,10 @@
     }
 
     .agent-step {
-      display: flex;
+      display: grid;
+      grid-template-columns: 24px minmax(130px, 180px) 1fr;
       align-items: center;
-      gap: 10px;
+      column-gap: 10px;
       padding: 8px;
       background: rgba(0, 0, 0, 0.2);
       border-radius: 6px;
@@ -259,14 +260,20 @@
     }
 
     .agent-name {
-      flex: 1;
       font-weight: 500;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .agent-result {
       font-size: 12px;
       color: var(--text-secondary);
       white-space: nowrap;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Tool Call Box */
@@ -551,6 +558,13 @@
         gap: 4px;
       }
       .activity-msg {
+        white-space: normal;
+      }
+      .agent-step {
+        grid-template-columns: 24px 1fr;
+      }
+      .agent-result {
+        grid-column: 2 / 3;
         white-space: normal;
       }
     }
