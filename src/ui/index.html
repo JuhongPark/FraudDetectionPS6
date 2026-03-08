@@ -316,6 +316,41 @@
       color: var(--text-primary);
       font-weight: 500;
     }
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .tool-row {
+      display: grid;
+      grid-template-columns: 20px minmax(120px, 220px) 1fr;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+    .tool-row:last-child {
+      border-bottom: none;
+    }
+    .tool-row .icon {
+      text-align: center;
+      font-weight: 700;
+    }
+    .tool-row .name {
+      color: var(--text-primary);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tool-row .meta {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* Suspicious Feed */
     .suspicious-section {
@@ -627,6 +662,30 @@
         opts.suspiciousBatch ? 'suspicious-batch' : '',
         opts.flash ? 'new-entry' : ''
       ].filter(Boolean).join(' ');
+      const toolEntries = Object.values(state.toolStates || {});
+      const toolRows = toolEntries
+        .sort((a, b) => {
+          const rank = { running: 0, failed: 1, completed: 2, pending: 3 };
+          return (rank[a.status] ?? 9) - (rank[b.status] ?? 9);
+        })
+        .map((t) => {
+          const icon = t.status === 'running' ? '◈' : t.status === 'completed' ? '✓' : t.status === 'failed' ? '✕' : '⊙';
+          const metaParts = [];
+          if (typeof t.written === 'number') metaParts.push(`written ${t.written}`);
+          if (typeof t.total === 'number') metaParts.push(`total ${t.total}`);
+          if (typeof t.explanation_count === 'number') metaParts.push(`explanations ${t.explanation_count}`);
+          if (typeof t.chain_consistent === 'boolean') metaParts.push(`chain ${t.chain_consistent ? 'ok' : 'mismatch'}`);
+          if (t.activity) metaParts.push(t.activity);
+          if (metaParts.length === 0) metaParts.push(t.status || 'pending');
+          return `
+            <div class="tool-row">
+              <span class="icon">${icon}</span>
+              <span class="name">${t.label || t.tool}</span>
+              <span class="meta">${metaParts.join(' | ')}</span>
+            </div>
+          `;
+        })
+        .join('');
       return `
         <div class="${cardClass}">
           <div class="batch-header">
@@ -670,31 +729,14 @@
             </div>
           </div>
 
-          ${state.toolStatus !== 'pending' ? `
-            <div class="tool-box ${state.toolStatus}">
-              <div class="tool-header ${state.toolStatus === 'failed' ? 'failed' : ''}">
-                📦 suspiciousTransactions Tool (${state.toolStatus})
+          ${toolEntries.length ? `
+            <div class="tool-box ${toolEntries.some((t) => t.status === 'running') ? 'running' : toolEntries.some((t) => t.status === 'failed') ? 'failed' : 'completed'}">
+              <div class="tool-header ${toolEntries.some((t) => t.status === 'failed') ? 'failed' : ''}">
+                Tools (${toolEntries.length})
               </div>
-              <div class="tool-stat">
-                <span class="tool-stat-label">Written:</span>
-                <span class="tool-stat-value">${state.written || 0}</span>
+              <div class="tool-list">
+                ${toolRows}
               </div>
-              <div class="tool-stat">
-                <span class="tool-stat-label">Total:</span>
-                <span class="tool-stat-value">${state.total || 0}</span>
-              </div>
-              ${state.toolStatus === 'running' ? `<div class="tool-stat"><span class="tool-stat-label">Activity:</span><span class="tool-stat-value">${state.toolActivity || 'writing...'}</span></div>` : ''}
-            </div>
-          ` : ''}
-          ${Object.keys(state.activeAgentTools || {}).length ? `
-            <div class="tool-box running">
-              <div class="tool-header">Agent Tool calls (running)</div>
-              ${Object.values(state.activeAgentTools).map((t) => `
-                <div class="tool-stat">
-                  <span class="tool-stat-label">${t.agent || 'Agent'}:</span>
-                  <span class="tool-stat-value">${t.tool_label || t.tool || 'Tool'}</span>
-                </div>
-              `).join('')}
             </div>
           ` : ''}
           ${state.lastEventTime ? `<div class="meta-row">Last update: ${state.lastEventTime}</div>` : ''}
@@ -714,6 +756,7 @@
           auditorStatus: 'pending',
           toolStatus: 'pending',
           activeAgentTools: {},
+          toolStates: {},
           candidates: 0,
           profiled: 0,
           scored: 0,
@@ -729,6 +772,17 @@
           toolActivity: ''
         };
       }
+    }
+
+    function upsertToolState(state, key, label, status, payload = {}) {
+      const prev = state.toolStates[key] || { tool: key, label: label || key, status: 'pending' };
+      state.toolStates[key] = {
+        ...prev,
+        ...payload,
+        tool: key,
+        label: label || prev.label || key,
+        status: status || prev.status || 'pending'
+      };
     }
 
     function updateBatchState(event) {
@@ -785,26 +839,66 @@
         }
       } else if (type === 'tool_call_started') {
         if (payload.source === 'agent_sdk') {
-          const key = payload.call_id || `${payload.agent || 'agent'}:${payload.tool || payload.tool_label || 'tool'}`;
-          state.activeAgentTools[key] = {
-            agent: payload.agent || 'Agent',
-            tool: payload.tool || '',
-            tool_label: payload.tool_label || payload.tool || 'Tool'
-          };
+          const key = `${payload.agent || 'Agent'}:${payload.tool || payload.tool_label || 'tool'}`;
+          upsertToolState(
+            state,
+            key,
+            `${payload.agent || 'Agent'} / ${payload.tool_label || payload.tool || 'Tool'}`,
+            'running',
+            { source: payload.source, activity: payload.activity || 'running' }
+          );
         } else {
           state.toolStatus = 'running';
           state.toolActivity = payload.activity || 'Persisting suspicious records';
+          upsertToolState(
+            state,
+            payload.tool || payload.tool_label || 'tool',
+            payload.tool_label || payload.tool || 'Tool',
+            'running',
+            { source: 'pipeline', activity: payload.activity || 'running' }
+          );
         }
       } else if (type === 'tool_call_finished' || type === 'tool_executed') {
         if (payload.source === 'agent_sdk') {
-          const key = payload.call_id || `${payload.agent || 'agent'}:${payload.tool || payload.tool_label || 'tool'}`;
-          delete state.activeAgentTools[key];
+          const key = `${payload.agent || 'Agent'}:${payload.tool || payload.tool_label || 'tool'}`;
+          upsertToolState(
+            state,
+            key,
+            `${payload.agent || 'Agent'} / ${payload.tool_label || payload.tool || 'Tool'}`,
+            payload.error ? 'failed' : 'completed',
+            { source: payload.source, activity: payload.activity || '' }
+          );
         } else if (payload.tool === 'suspiciousTransactions') {
           state.toolStatus = payload.error ? 'failed' : 'completed';
           state.written = payload.written || 0;
           state.total = payload.total || 0;
           state.toolActivity = payload.activity || '';
           if (payload.error) state.error = `Write Tool: ${payload.error}`;
+          upsertToolState(
+            state,
+            payload.tool,
+            payload.tool_label || payload.tool || 'Tool',
+            payload.error ? 'failed' : 'completed',
+            {
+              source: 'pipeline',
+              activity: payload.activity || '',
+              written: payload.written,
+              total: payload.total
+            }
+          );
+        } else if (!payload.source && payload.tool) {
+          upsertToolState(
+            state,
+            payload.tool,
+            payload.tool_label || payload.tool || 'Tool',
+            payload.error ? 'failed' : 'completed',
+            {
+              source: 'pipeline',
+              activity: payload.activity || '',
+              chain_consistent: payload.chain_consistent,
+              explanation_count: payload.explanation_count
+            }
+          );
         }
       }
     }
@@ -826,11 +920,10 @@
         if (s.auditorStatus === 'running') {
           out.push(makeActivity(`${s.batch_id} / Evidence Auditor Agent`, s.auditorActivity || 'Validating candidates'));
         }
-        if (s.toolStatus === 'running') {
-          out.push(makeActivity(`${s.batch_id} / suspiciousTransactions Tool`, s.toolActivity || 'Writing suspicious records'));
-        }
-        Object.values(s.activeAgentTools || {}).forEach((t) => {
-          out.push(makeActivity(`${s.batch_id} / ${t.agent || 'Agent'}`, `${t.tool_label || t.tool || 'Tool'} running`));
+        Object.values(s.toolStates || {}).forEach((t) => {
+          if (t.status === 'running') {
+            out.push(makeActivity(`${s.batch_id} / Tool`, `${t.label || t.tool} running`));
+          }
         });
         return out;
       });
