@@ -145,9 +145,11 @@
     /* Batch Grid */
     .batches-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(5, minmax(220px, 1fr));
+      gap: 12px;
       margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
     }
 
     .batch-card {
@@ -277,7 +279,8 @@
       color: var(--text-secondary);
       min-width: 0;
       white-space: normal;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
+      word-break: normal;
       line-height: 1.35;
     }
 
@@ -545,7 +548,8 @@
     .activity-msg {
       color: var(--text-secondary);
       white-space: normal;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
+      word-break: normal;
       line-height: 1.35;
     }
 
