@@ -38,6 +38,7 @@ async function signalMinerAgent(batch, batchId, eventEmitter) {
       agent: "Signal Miner",
       batch_id: batchId,
       batch_size: batch.length,
+      activity: "Analyzing full batch for broad fraud candidates",
     });
 
     const agent = createSignalMinerAgent();
@@ -54,6 +55,7 @@ Transactions:\n${JSON.stringify(batch, null, 2)}`;
       batch_id: batchId,
       candidates: candidates.length,
       result: candidates,
+      activity: "Broad candidate scan completed",
     });
 
     return candidates;
@@ -76,6 +78,7 @@ async function evidenceAuditorAgent(batch, candidates, batchId, eventEmitter) {
       agent: "Evidence Auditor",
       batch_id: batchId,
       candidates_to_verify: candidates.length,
+      activity: "Validating candidates with strict fraud criteria",
     });
 
     const agent = createEvidenceAuditorAgent();
@@ -94,6 +97,7 @@ Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
       batch_id: batchId,
       confirmed: confirmed.length,
       result: confirmed,
+      activity: "Strict validation completed",
     });
 
     return confirmed;

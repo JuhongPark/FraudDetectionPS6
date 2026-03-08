@@ -108,6 +108,7 @@ class FraudPipeline {
           batch_id: batchId,
           tool: "suspiciousTransactions",
           record_count: confirmed.length,
+          activity: "Persisting confirmed suspicious transactions",
         });
 
         const toolResult = await this.writeSuspicious({
@@ -119,7 +120,8 @@ class FraudPipeline {
           batch_id: batchId,
           tool: toolResult.tool,
           written: toolResult.written,
-          total: toolResult.total
+          total: toolResult.total,
+          activity: "Suspicious transaction persistence completed",
         });
         this.eventEmitter.emit("tool_executed", {
           batch_id: batchId,

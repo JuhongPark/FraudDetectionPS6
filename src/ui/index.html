@@ -447,6 +447,28 @@
       color: var(--text-primary);
       line-height: 1.35;
     }
+    .activity-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .activity-item {
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: rgba(91, 156, 245, 0.12);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .activity-item strong {
+      color: var(--text-primary);
+    }
 
     /* Responsive */
     @media (max-width: 768px) {
@@ -497,6 +519,16 @@
     <!-- Batch Cards -->
     <div class="batches-grid" id="batchesContainer"></div>
 
+    <!-- Current Activity -->
+    <div class="activity-section">
+      <div class="suspicious-header">
+        <span>Current Activity</span>
+      </div>
+      <div class="activity-list" id="activityList">
+        <div class="empty-state">No active agent or tool operations</div>
+      </div>
+    </div>
+
     <!-- Timeline -->
     <div class="timeline-section">
       <div class="suspicious-header">
@@ -531,6 +563,7 @@
     const suspiciousContainer = document.getElementById('suspiciousContainer');
     const failureCountValue = document.getElementById('failureCountValue');
     const timelineList = document.getElementById('timelineList');
+    const activityList = document.getElementById('activityList');
 
     let batchStates = {};
     let seenSuspiciousIds = new Set();
@@ -562,7 +595,7 @@
                 ${getAgentIcon(state.signalMinerStatus)}
               </div>
               <span class="agent-name">Signal Miner</span>
-              <span class="agent-result">${state.candidates || 0} candidates</span>
+              <span class="agent-result">${state.signalMinerStatus === 'running' ? (state.signalMinerActivity || 'running...') : `${state.candidates || 0} candidates`}</span>
             </div>
 
             <div class="agent-step">
@@ -570,7 +603,7 @@
                 ${getAgentIcon(state.auditorStatus)}
               </div>
               <span class="agent-name">Evidence Auditor</span>
-              <span class="agent-result">${state.confirmed || 0} confirmed</span>
+              <span class="agent-result">${state.auditorStatus === 'running' ? (state.auditorActivity || 'running...') : `${state.confirmed || 0} confirmed`}</span>
             </div>
           </div>
 
@@ -587,6 +620,7 @@
                 <span class="tool-stat-label">Total:</span>
                 <span class="tool-stat-value">${state.total || 0}</span>
               </div>
+              ${state.toolStatus === 'running' ? `<div class="tool-stat"><span class="tool-stat-label">Activity:</span><span class="tool-stat-value">${state.toolActivity || 'writing...'}</span></div>` : ''}
             </div>
           ` : ''}
           ${state.lastEventTime ? `<div class="meta-row">Last update: ${state.lastEventTime}</div>` : ''}
@@ -608,7 +642,10 @@
           written: 0,
           total: 0,
           error: '',
-          lastEventTime: ''
+          lastEventTime: '',
+          signalMinerActivity: '',
+          auditorActivity: '',
+          toolActivity: ''
         };
       }
     }
@@ -632,29 +669,53 @@
       } else if (type === 'agent_call_started') {
         if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = 'running';
+          state.signalMinerActivity = payload.activity || 'Analyzing transactions';
         } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = 'running';
+          state.auditorActivity = payload.activity || 'Validating candidates';
         }
       } else if (type === 'agent_call_finished') {
         if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = payload.error ? 'failed' : 'completed';
           state.candidates = payload.candidates || 0;
+          state.signalMinerActivity = payload.activity || '';
           if (payload.error) state.error = `Signal Miner: ${payload.error}`;
         } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = payload.error ? 'failed' : 'completed';
           state.confirmed = payload.confirmed || 0;
+          state.auditorActivity = payload.activity || '';
           if (payload.error) state.error = `Evidence Auditor: ${payload.error}`;
         }
       } else if (type === 'tool_call_started') {
         state.toolStatus = 'running';
+        state.toolActivity = payload.activity || 'Persisting suspicious records';
       } else if (type === 'tool_call_finished' || type === 'tool_executed') {
         if (payload.tool === 'suspiciousTransactions') {
           state.toolStatus = payload.error ? 'failed' : 'completed';
           state.written = payload.written || 0;
           state.total = payload.total || 0;
+          state.toolActivity = payload.activity || '';
           if (payload.error) state.error = `Write Tool: ${payload.error}`;
         }
       }
+    }
+
+    function renderActivity(states) {
+      const active = Object.values(states).flatMap((s) => {
+        const out = [];
+        if (s.signalMinerStatus === 'running') {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Signal Miner</strong><br>${s.signalMinerActivity || 'Analyzing transactions'}</div>`);
+        }
+        if (s.auditorStatus === 'running') {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Evidence Auditor</strong><br>${s.auditorActivity || 'Validating candidates'}</div>`);
+        }
+        if (s.toolStatus === 'running') {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / suspiciousTransactions</strong><br>${s.toolActivity || 'Writing suspicious records'}</div>`);
+        }
+        return out;
+      });
+
+      activityList.innerHTML = active.length ? active.join('') : '<div class="empty-state">No active agent or tool operations</div>';
     }
 
     function formatTs(ts) {
@@ -768,6 +829,7 @@
 
       // Render
       renderBatches(data.batch_events || []);
+      renderActivity(batchStates);
       renderSuspicious(data.suspicious || []);
       renderTimeline(data.timeline_events || []);
     }
