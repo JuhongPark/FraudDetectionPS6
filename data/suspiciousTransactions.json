@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "id": "txn_2004",
+    "reason": "confirmed: crypto merchant + high amount (4450.00)"
+  },
+  {
+    "id": "txn_2011",
+    "reason": "confirmed: crypto merchant + high amount (4700.00)"
+  },
+  {
+    "id": "txn_2017",
+    "reason": "confirmed: luxury + unusual location"
+  },
+  {
+    "id": "txn_2024",
+    "reason": "confirmed: crypto merchant + high amount (5100.00)"
+  },
+  {
+    "id": "txn_2031",
+    "reason": "confirmed: crypto merchant + high amount (5350.00)"
+  },
+  {
+    "id": "txn_2037",
+    "reason": "confirmed: luxury + unusual location"
+  },
+  {
+    "id": "txn_2044",
+    "reason": "confirmed: crypto merchant + high amount (6500.00)"
+  },
+  {
+    "id": "txn_2051",
+    "reason": "confirmed: crypto merchant + high amount (6000.00)"
+  },
+  {
+    "id": "txn_2057",
+    "reason": "confirmed: luxury + unusual location"
+  },
+  {
+    "id": "txn_2064",
+    "reason": "confirmed: very high amount (7150.00)"
+  },
+  {
+    "id": "txn_2071",
+    "reason": "confirmed: very high amount (7400.00)"
+  },
+  {
+    "id": "txn_2077",
+    "reason": "confirmed: very high amount (7400.00)"
+  },
+  {
+    "id": "txn_2084",
+    "reason": "confirmed: very high amount (7800.00)"
+  },
+  {
+    "id": "txn_2091",
+    "reason": "confirmed: very high amount (8050.00)"
+  },
+  {
+    "id": "txn_2097",
+    "reason": "confirmed: very high amount (8050.00)"
+  }
+]

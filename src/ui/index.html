@@ -6,172 +6,635 @@
   <title>Fraud Detection Monitor</title>
   <style>
     :root {
-      --bg: #f4f7f6;
-      --card: #ffffff;
-      --text: #1f2a2e;
-      --muted: #5d6d72;
-      --accent: #007c6d;
-      --warn: #ad6800;
-      --ok: #2a7a1f;
-      --border: #d6e1de;
+      --bg-dark: #0f1419;
+      --bg-light: #1a1f29;
+      --card-bg: #252d3d;
+      --border: #3a4451;
+      --text-primary: #e8eaed;
+      --text-secondary: #b0b5bc;
+      --accent-blue: #5b9cf5;
+      --accent-green: #34a853;
+      --accent-red: #ea4335;
+      --accent-orange: #fbbc04;
+      --accent-gray: #5f6368;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top left, #eef6f4 0%, var(--bg) 48%, #e6f0ee 100%);
-      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
     }
+
     .wrap {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 20px;
     }
-    h1 { margin: 0 0 6px; letter-spacing: 0.2px; }
-    .sub { color: var(--muted); margin-bottom: 18px; }
-    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
-    button {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
+
+    /* Header */
+    .header {
+      margin-bottom: 24px;
     }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status-pill { padding: 8px 12px; border-radius: 999px; background: #dff2ef; color: #0b5f56; font-weight: 600; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
     }
-    .card {
-      background: var(--card);
+
+    .header-desc {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin: 0 0 16px;
+    }
+
+    /* Status Dashboard */
+    .status-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 16px;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px;
-      min-height: 220px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
     }
-    .card h2 { margin: 0 0 10px; font-size: 1rem; }
-    .kpi { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-    .kpi div { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #f8fbfa; }
-    .log {
-      max-height: 280px;
-      overflow: auto;
-      border: 1px solid var(--border);
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-gray);
+    }
+
+    .status-indicator.running {
+      background: var(--accent-blue);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .status-item.warning .status-value {
+      color: var(--accent-orange);
+    }
+
+    .status-item.critical .status-value {
+      color: var(--accent-red);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      background: var(--accent-blue);
+      color: white;
+      border: none;
       border-radius: 8px;
-      padding: 8px;
-      background: #fbfdfc;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
     }
-    .line { padding: 6px 4px; border-bottom: 1px dashed #e6eeec; font-size: 0.9rem; }
-    .line:last-child { border-bottom: none; }
-    .suspicious { color: var(--warn); font-weight: 600; }
-    .ok { color: var(--ok); font-weight: 600; }
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
+
+    .btn:hover:not(:disabled) {
+      background: #4a8ae5;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(91, 156, 245, 0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Batch Grid */
+    .batches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .batch-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .batch-card:hover {
+      border-color: var(--accent-blue);
+      box-shadow: 0 4px 12px rgba(91, 156, 245, 0.1);
+    }
+
+    .batch-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .batch-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(91, 156, 245, 0.1);
+      color: var(--accent-blue);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .batch-status.completed {
+      background: rgba(52, 168, 83, 0.1);
+      color: var(--accent-green);
+    }
+
+    .batch-status.failed {
+      background: rgba(234, 67, 53, 0.1);
+      color: var(--accent-red);
+    }
+
+    /* Agent Steps */
+    .agent-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .agent-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .agent-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .agent-icon.pending {
+      background: var(--accent-gray);
+      color: var(--bg-dark);
+    }
+
+    .agent-icon.running {
+      background: var(--accent-blue);
+      color: white;
+      animation: spin 2s linear infinite;
+    }
+
+    .agent-icon.completed {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .agent-icon.failed {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .agent-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .agent-result {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* Tool Call Box */
+    .tool-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    .tool-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+
+    .tool-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .tool-stat-label {
+      color: var(--text-secondary);
+    }
+
+    .tool-stat-value {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Suspicious Feed */
+    .suspicious-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .suspicious-header {
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .suspicious-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--accent-orange);
+      color: var(--bg-dark);
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .suspicious-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .suspicious-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 3px solid var(--accent-orange);
+      border-radius: 4px;
+      font-size: 13px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        background: rgba(251, 188, 4, 0.2);
+      }
+      to {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    .suspicious-id {
+      font-family: 'Monaco', monospace;
+      font-weight: 600;
+      color: var(--accent-orange);
+      min-width: 80px;
+    }
+
+    .suspicious-reason {
+      color: var(--text-secondary);
+      flex: 1;
+      font-size: 12px;
+    }
+
+    /* Scrollbar */
+    .suspicious-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .suspicious-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .suspicious-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .batches-grid {
+        grid-template-columns: 1fr;
+      }
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Fraud Detection Monitoring</h1>
-    <div class="sub">Visual monitoring for Agent/Tool calls and near-real-time suspicious transactions.</div>
-
-    <div class="toolbar">
-      <button id="runBtn">Run Pipeline</button>
-      <div id="running" class="status-pill">Idle</div>
+    <!-- Header -->
+    <div class="header">
+      <h1>Fraud Detection Monitor</h1>
+      <div class="header-desc">Real-time pipeline monitoring with Agent and Tool visibility</div>
     </div>
 
-    <div class="kpi" id="summary"></div>
+    <!-- Status Dashboard -->
+    <div class="status-bar">
+      <div class="status-item">
+        <div id="statusIndicator" class="status-indicator"></div>
+        <span id="statusText">Status:</span>
+        <span id="statusValue" class="status-value">Idle</span>
+      </div>
+      <div class="status-item">
+        <span>Progress:</span>
+        <span id="progressValue" class="status-value">0/0</span>
+      </div>
+      <div class="status-item warning" id="suspiciousContainer" style="display:none;">
+        <span>⚠ Suspicious:</span>
+        <span id="suspiciousCountValue" class="status-value">0</span>
+      </div>
+    </div>
 
-    <div class="grid">
-      <section class="card">
-        <h2>Agent Panel</h2>
-        <div class="log" id="agentLog"></div>
-      </section>
+    <!-- Controls -->
+    <div class="controls">
+      <button id="runBtn" class="btn">▶ Run Pipeline</button>
+    </div>
 
-      <section class="card">
-        <h2>Tool Call Panel</h2>
-        <div class="log" id="toolLog"></div>
-      </section>
+    <!-- Batch Cards -->
+    <div class="batches-grid" id="batchesContainer"></div>
 
-      <section class="card">
-        <h2>Batch Lifecycle</h2>
-        <div class="log" id="batchLog"></div>
-      </section>
-
-      <section class="card">
-        <h2>Suspicious Transactions</h2>
-        <div class="log" id="suspiciousLog"></div>
-      </section>
+    <!-- Suspicious Transactions -->
+    <div class="suspicious-section">
+      <div class="suspicious-header">
+        <span>Suspicious Transactions</span>
+        <div id="suspiciousBadge" class="suspicious-count">0</div>
+      </div>
+      <div class="suspicious-list" id="suspiciousList">
+        <div class="empty-state">No suspicious transactions yet</div>
+      </div>
     </div>
   </div>
 
   <script>
     const runBtn = document.getElementById('runBtn');
-    const running = document.getElementById('running');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusValue = document.getElementById('statusValue');
+    const progressValue = document.getElementById('progressValue');
+    const batchesContainer = document.getElementById('batchesContainer');
+    const suspiciousList = document.getElementById('suspiciousList');
+    const suspiciousBadge = document.getElementById('suspiciousBadge');
+    const suspiciousCountValue = document.getElementById('suspiciousCountValue');
+    const suspiciousContainer = document.getElementById('suspiciousContainer');
 
-    function formatTs(ts) {
-      const d = new Date(ts * 1000);
-      return d.toLocaleTimeString();
+    let batchStates = {};
+
+    function getAgentIcon(type) {
+      const icons = {
+        'pending': '⊙',
+        'running': '◈',
+        'completed': '✓',
+        'failed': '✕'
+      };
+      return icons[type] || '○';
     }
 
-    function renderSummary(summary, lastResult) {
-      const el = document.getElementById('summary');
-      const total = lastResult && lastResult.total_transactions ? lastResult.total_transactions : 0;
-      const suspicious = summary.suspicious_found || 0;
-      el.innerHTML = `
-        <div><strong>Total Txn</strong><br/>${total}</div>
-        <div><strong>Batch Started</strong><br/>${summary.batch_started || 0}</div>
-        <div><strong>Batch Finished</strong><br/>${summary.batch_finished || 0}</div>
-        <div><strong>Suspicious Found</strong><br/><span class="suspicious">${suspicious}</span></div>
+    function renderBatchCard(batchId, state) {
+      return `
+        <div class="batch-card">
+          <div class="batch-header">
+            <span>${batchId}</span>
+            <div class="batch-status ${state.status}">
+              ${state.status === 'completed' ? '✓ Done' : state.status === 'running' ? '⟳ Running' : '○ Pending'}
+            </div>
+          </div>
+
+          <div class="agent-steps">
+            <div class="agent-step">
+              <div class="agent-icon ${state.signalMinerStatus}">
+                ${getAgentIcon(state.signalMinerStatus)}
+              </div>
+              <span class="agent-name">Signal Miner</span>
+              <span class="agent-result">${state.candidates || 0} candidates</span>
+            </div>
+
+            <div class="agent-step">
+              <div class="agent-icon ${state.auditorStatus}">
+                ${getAgentIcon(state.auditorStatus)}
+              </div>
+              <span class="agent-name">Evidence Auditor</span>
+              <span class="agent-result">${state.confirmed || 0} confirmed</span>
+            </div>
+          </div>
+
+          ${state.toolStatus ? `
+            <div class="tool-box">
+              <div class="tool-header">📦 Write Tool</div>
+              <div class="tool-stat">
+                <span class="tool-stat-label">Written:</span>
+                <span class="tool-stat-value">${state.written || 0}</span>
+              </div>
+              <div class="tool-stat">
+                <span class="tool-stat-label">Total:</span>
+                <span class="tool-stat-value">${state.total || 0}</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
       `;
     }
 
-    function renderLog(id, events, formatter) {
-      const el = document.getElementById(id);
-      el.innerHTML = events.slice(-80).reverse().map(formatter).join('');
+    function initializeBatch(batchId) {
+      if (!batchStates[batchId]) {
+        batchStates[batchId] = {
+          batch_id: batchId,
+          status: 'running',
+          signalMinerStatus: 'pending',
+          auditorStatus: 'pending',
+          toolStatus: false,
+          candidates: 0,
+          confirmed: 0,
+          written: 0,
+          total: 0
+        };
+      }
+    }
+
+    function updateBatchState(event) {
+      const { type, payload } = event;
+      const batchId = payload.batch_id;
+
+      if (!batchId) return;
+      initializeBatch(batchId);
+      const state = batchStates[batchId];
+
+      if (type === 'batch_started') {
+        state.status = 'running';
+      } else if (type === 'batch_finished') {
+        state.status = 'completed';
+      } else if (type === 'agent_call_started') {
+        if (payload.agent === 'Signal Miner') {
+          state.signalMinerStatus = 'running';
+        } else if (payload.agent === 'Evidence Auditor') {
+          state.auditorStatus = 'running';
+        }
+      } else if (type === 'agent_call_finished') {
+        if (payload.agent === 'Signal Miner') {
+          state.signalMinerStatus = 'completed';
+          state.candidates = payload.candidates || 0;
+        } else if (payload.agent === 'Evidence Auditor') {
+          state.auditorStatus = 'completed';
+          state.confirmed = payload.confirmed || 0;
+        }
+      } else if (type === 'tool_call_finished') {
+        if (payload.tool === 'suspiciousTransactions') {
+          state.toolStatus = true;
+          state.written = payload.written || 0;
+          state.total = payload.total || 0;
+        }
+      }
+    }
+
+    function renderBatches(events) {
+      const batchIds = new Set();
+      events.forEach(e => {
+        if (e.payload && e.payload.batch_id) {
+          batchIds.add(e.payload.batch_id);
+        }
+      });
+
+      const sortedIds = Array.from(batchIds).sort((a, b) => {
+        const numA = parseInt(a.split('-')[1]);
+        const numB = parseInt(b.split('-')[1]);
+        return numA - numB;
+      });
+
+      batchesContainer.innerHTML = sortedIds.map(id => renderBatchCard(id, batchStates[id])).join('');
+    }
+
+    function renderSuspicious(items) {
+      suspiciousBadge.textContent = items.length;
+      suspiciousCountValue.textContent = items.length;
+
+      if (items.length === 0) {
+        suspiciousList.innerHTML = '<div class="empty-state">No suspicious transactions yet</div>';
+        suspiciousContainer.style.display = 'none';
+      } else {
+        suspiciousContainer.style.display = 'flex';
+        suspiciousList.innerHTML = items
+          .map(item => `
+            <div class="suspicious-item">
+              <span class="suspicious-id">${item.id}</span>
+              <span class="suspicious-reason">${item.reason}</span>
+            </div>
+          `)
+          .join('');
+      }
     }
 
     async function refresh() {
       const res = await fetch('/api/status');
       const data = await res.json();
-      running.textContent = data.running ? 'Running' : 'Idle';
-      runBtn.disabled = data.running;
 
-      renderSummary(data.summary, data.last_result || {});
+      // Update status
+      const isRunning = data.running;
+      if (isRunning) {
+        statusIndicator.classList.add('running');
+        statusValue.textContent = 'Running';
+      } else {
+        statusIndicator.classList.remove('running');
+        statusValue.textContent = 'Idle';
+      }
+      runBtn.disabled = isRunning;
 
-      renderLog('agentLog', data.agent_events || [], (e) => {
-        const p = e.payload;
-        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.agent} | ${p.batch_id || '-'}</div>`;
-      });
+      // Update progress
+      const batchFinished = data.summary.batch_finished || 0;
+      const lastResult = data.last_result || {};
+      const batchCount = lastResult.batch_count || 0;
+      progressValue.textContent = `${batchFinished}/${batchCount}`;
 
-      renderLog('toolLog', data.tool_events || [], (e) => {
-        const p = e.payload;
-        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.tool} | ${JSON.stringify(p)}</div>`;
-      });
+      // Process events
+      (data.batch_events || []).forEach(updateBatchState);
+      (data.agent_events || []).forEach(updateBatchState);
+      (data.tool_events || []).forEach(updateBatchState);
 
-      renderLog('batchLog', data.batch_events || [], (e) => {
-        const p = e.payload;
-        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.batch_id || '-'}</div>`;
-      });
-
-      const suspiciousItems = (data.suspicious || []).map((x) =>
-        `<div class="line"><span class="suspicious">${x.id}</span> - ${x.reason}</div>`
-      );
-      document.getElementById('suspiciousLog').innerHTML = suspiciousItems.length
-        ? suspiciousItems.join('')
-        : '<div class="line ok">No suspicious transactions yet.</div>';
+      // Render
+      renderBatches(data.batch_events || []);
+      renderSuspicious(data.suspicious || []);
     }
 
     runBtn.addEventListener('click', async () => {
       await fetch('/api/run', { method: 'POST' });
+      batchStates = {};
       refresh();
     });
 
     refresh();
-    setInterval(refresh, 1000);
+    setInterval(refresh, 800);
   </script>
 </body>
 </html>
