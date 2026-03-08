@@ -5,9 +5,25 @@ Node.js fraud-detection demo using `@openai/agents`.
 ## What It Does
 - Generates 100 demo transactions
 - Splits into 5 batches of 20
-- Runs two agents per batch (`Signal Miner` -> `Evidence Auditor`)
+- Runs four agents per batch (`Signal Miner` -> `Pattern Profiler` -> `Risk Scorer` -> `Evidence Auditor`)
+- Executes all registered batch-check tools every batch (even when no suspicious records are found)
 - Persists suspicious results to `data/suspiciousTransactions.json`
 - Shows batch/agent/tool activity in a monitoring UI
+
+## Agent/Tool Flow
+- Agents:
+  - `Signal Miner Agent`
+  - `Pattern Profiler Agent`
+  - `Risk Scorer Agent`
+  - `Evidence Auditor Agent`
+- Tools:
+  - `analyze_transaction_patterns`
+  - `geoVelocityCheckTool`
+  - `riskScoreTool`
+  - `batchIntegrityAuditTool`
+  - `decisionExplainabilityTool`
+  - `ui_event_stream`
+  - `suspiciousTransactions`
 
 ## Requirements
 - Node.js 22+
