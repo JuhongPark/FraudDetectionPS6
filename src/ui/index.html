@@ -275,10 +275,10 @@
     .agent-result {
       font-size: 12px;
       color: var(--text-secondary);
-      white-space: nowrap;
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
     }
 
     /* Tool Call Box */
@@ -544,9 +544,9 @@
     }
     .activity-msg {
       color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
     }
 
     /* Responsive */
