@@ -49,6 +49,57 @@ async function streamUiEvent(input, eventEmitter) {
   return { status: "ok", event: event_type };
 }
 
+async function runGeoVelocityCheck(input) {
+  const { batch, candidates } = input;
+  const idToTxn = new Map((batch || []).map((t) => [t.id, t]));
+  const profiled = (candidates || []).map((c) => {
+    const txn = idToTxn.get(c.id) || {};
+    const amount = Number(txn.amount || 0);
+    const location = String(txn.location || "").toLowerCase();
+    const channel = String(txn.channel || "").toLowerCase();
+
+    let geoRisk = 0;
+    const signals = [];
+    if (["lagos", "unknown", "vpn", "offshore"].some((k) => location.includes(k))) {
+      geoRisk += 40;
+      signals.push("geo_anomaly");
+    }
+    if (["card_not_present", "online_transfer"].includes(channel)) {
+      geoRisk += 25;
+      signals.push("remote_channel");
+    }
+    if (amount >= 3000) {
+      geoRisk += 20;
+      signals.push("large_amount");
+    }
+
+    return {
+      ...c,
+      geo_risk: Math.min(100, geoRisk),
+      signals,
+    };
+  });
+
+  return { profiled };
+}
+
+async function runRiskScore(input) {
+  const { profiled } = input;
+  const scored = (profiled || []).map((item) => {
+    const signalWeight = Array.isArray(item.signals) ? item.signals.length * 10 : 0;
+    const reasonWeight = item.reason ? Math.min(20, item.reason.length / 8) : 0;
+    const geoWeight = Number(item.geo_risk || 0);
+    const score = Math.min(100, Math.round(signalWeight + reasonWeight + geoWeight));
+    return {
+      ...item,
+      risk_score: score,
+      priority: score >= 70 ? "high" : score >= 45 ? "medium" : "low",
+    };
+  });
+
+  return { scored };
+}
+
 const analyzeTransactionPatternsTool = tool({
   name: "analyze_transaction_patterns",
   description: "Analyze transaction data to find suspicious patterns and return candidates",
@@ -123,6 +174,46 @@ const uiEventStreamTool = tool({
   execute: async (input) => streamUiEvent(input),
 });
 
+const geoVelocityCheckTool = tool({
+  name: "geoVelocityCheckTool",
+  description: "Enrich suspicious candidates with geo and channel risk signals",
+  parameters: {
+    type: "object",
+    properties: {
+      batch: {
+        type: "array",
+        items: { type: "object" },
+      },
+      candidates: {
+        type: "array",
+        items: { type: "object" },
+      },
+    },
+    required: ["batch", "candidates"],
+    additionalProperties: false,
+  },
+  strict: false,
+  execute: runGeoVelocityCheck,
+});
+
+const riskScoreTool = tool({
+  name: "riskScoreTool",
+  description: "Assign risk scores and priority levels to profiled candidates",
+  parameters: {
+    type: "object",
+    properties: {
+      profiled: {
+        type: "array",
+        items: { type: "object" },
+      },
+    },
+    required: ["profiled"],
+    additionalProperties: false,
+  },
+  strict: false,
+  execute: runRiskScore,
+});
+
 function findBroadCandidates(transactions) {
   const candidates = [];
 
@@ -191,7 +282,11 @@ module.exports = {
   analyzeTransactionPatterns,
   writeSuspiciousTransactions,
   streamUiEvent,
+  runGeoVelocityCheck,
+  runRiskScore,
   analyzeTransactionPatternsTool,
   suspiciousTransactionsTool,
   uiEventStreamTool,
+  geoVelocityCheckTool,
+  riskScoreTool,
 };

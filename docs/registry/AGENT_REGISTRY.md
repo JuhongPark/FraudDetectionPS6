@@ -20,6 +20,8 @@ Using @openai/agents framework with OpenAI chat API backend.
 | Agent Name | Location | Framework | Role | Trigger Condition | Inputs | Outputs | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | SignalMiner | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Broad fraud detection | Batch received (size=20) | Batch transactions (JSON) | Array of {id, reason} candidates | active |
+| PatternProfiler | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Candidate enrichment with geo/channel signals | Candidates produced | Batch + candidate list | Array of profiled candidates with geo_risk/signals | active |
+| RiskScorer | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Candidate risk scoring and priority | Profiled candidates ready | Profiled candidate list | Array with risk_score/priority | active |
 | EvidenceAuditor | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Strict fraud validation | Candidate list available | Batch + candidate records | Array of {id, reason} confirmed | active |
 
 ## Agent Creation Details

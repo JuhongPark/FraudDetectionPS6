@@ -1,7 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
-const { signalMinerAgent, evidenceAuditorAgent } = require("../agents/fraudDetectionAgents");
+const {
+  signalMinerAgent,
+  patternProfilerAgent,
+  riskScorerAgent,
+  evidenceAuditorAgent,
+} = require("../agents/fraudDetectionAgents");
 const { writeSuspiciousTransactions } = require("../tools/tools");
 
 function chunkTransactions(transactions, batchSize = 20) {
@@ -18,6 +23,8 @@ class FraudPipeline {
     this.eventEmitter = new EventEmitter();
     this.suspiciousTransactions = [];
     this.signalMiner = deps.signalMinerAgent || signalMinerAgent;
+    this.patternProfiler = deps.patternProfilerAgent || (async (_batch, candidates) => candidates);
+    this.riskScorer = deps.riskScorerAgent || (async (_batch, profiled) => profiled);
     this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
     this.writeSuspicious = deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
   }
@@ -94,10 +101,26 @@ class FraudPipeline {
         this.eventEmitter
       );
 
+      // Run Pattern Profiler
+      const profiled = await this.patternProfiler(
+        batch,
+        candidates,
+        batchId,
+        this.eventEmitter
+      );
+
+      // Run Risk Scorer
+      const scored = await this.riskScorer(
+        batch,
+        profiled,
+        batchId,
+        this.eventEmitter
+      );
+
       // Run Evidence Auditor
       const confirmed = await this.evidenceAuditor(
         batch,
-        candidates,
+        scored,
         batchId,
         this.eventEmitter
       );

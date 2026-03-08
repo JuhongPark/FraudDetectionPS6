@@ -19,6 +19,8 @@ Uses @openai/agents framework Tool system with OpenAI API backend.
 | Tool Name | Location | Purpose | Called By | Input Schema | Output Schema | Telemetry Events | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | analyze_transaction_patterns | `src/tools/tools.js` | Pattern analysis for fraud detection | SignalMiner, EvidenceAuditor | transactions[], analysis_type | candidates[] \| confirmed[] | agent_call_started, agent_call_finished | active |
+| geoVelocityCheckTool | `src/tools/tools.js` | Add geo/channel anomaly signals to candidates | PatternProfiler | batch[], candidates[] | profiled[] | agent_call_started, agent_call_finished | active |
+| riskScoreTool | `src/tools/tools.js` | Compute candidate risk score and priority | RiskScorer | profiled[] | scored[] | agent_call_started, agent_call_finished | active |
 | suspiciousTransactions | `src/tools/tools.js` | Persist suspicious transactions to file | fraudPipeline.processBatch() | transactions[] | {written, total} | tool_call_started, tool_call_finished, tool_executed | active |
 | ui_event_stream | `src/tools/tools.js` | Stream events to UI dashboard | EventEmitter | event_type, payload | {status, event} | Various events | active |
 
@@ -94,6 +96,10 @@ FraudPipeline.run()
   └─> processBatch(batch, index)
       ├─> signalMinerAgent()
       │   └─> analyze_transaction_patterns(broad)
+      ├─> patternProfilerAgent()
+      │   └─> geoVelocityCheckTool()
+      ├─> riskScorerAgent()
+      │   └─> riskScoreTool()
       ├─> evidenceAuditorAgent()
       │   └─> analyze_transaction_patterns(strict)
       └─> suspiciousTransactionsTool.fn()

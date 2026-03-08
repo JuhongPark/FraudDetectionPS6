@@ -607,6 +607,22 @@
             </div>
 
             <div class="agent-step">
+              <div class="agent-icon ${state.patternProfilerStatus}">
+                ${getAgentIcon(state.patternProfilerStatus)}
+              </div>
+              <span class="agent-name">Pattern Profiler Agent</span>
+              <span class="agent-result">${state.patternProfilerStatus === 'running' ? (state.patternProfilerActivity || 'running...') : `${state.profiled || 0} profiled`}</span>
+            </div>
+
+            <div class="agent-step">
+              <div class="agent-icon ${state.riskScorerStatus}">
+                ${getAgentIcon(state.riskScorerStatus)}
+              </div>
+              <span class="agent-name">Risk Scorer Agent</span>
+              <span class="agent-result">${state.riskScorerStatus === 'running' ? (state.riskScorerActivity || 'running...') : `${state.scored || 0} scored`}</span>
+            </div>
+
+            <div class="agent-step">
               <div class="agent-icon ${state.auditorStatus}">
                 ${getAgentIcon(state.auditorStatus)}
               </div>
@@ -643,15 +659,21 @@
           batch_id: batchId,
           status: 'running',
           signalMinerStatus: 'pending',
+          patternProfilerStatus: 'pending',
+          riskScorerStatus: 'pending',
           auditorStatus: 'pending',
           toolStatus: 'pending',
           candidates: 0,
+          profiled: 0,
+          scored: 0,
           confirmed: 0,
           written: 0,
           total: 0,
           error: '',
           lastEventTime: '',
           signalMinerActivity: '',
+          patternProfilerActivity: '',
+          riskScorerActivity: '',
           auditorActivity: '',
           toolActivity: ''
         };
@@ -678,6 +700,12 @@
         if (payload.agent === 'Signal Miner Agent' || payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = 'running';
           state.signalMinerActivity = payload.activity || 'Analyzing transactions';
+        } else if (payload.agent === 'Pattern Profiler Agent') {
+          state.patternProfilerStatus = 'running';
+          state.patternProfilerActivity = payload.activity || 'Profiling candidates';
+        } else if (payload.agent === 'Risk Scorer Agent') {
+          state.riskScorerStatus = 'running';
+          state.riskScorerActivity = payload.activity || 'Scoring candidates';
         } else if (payload.agent === 'Evidence Auditor Agent' || payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = 'running';
           state.auditorActivity = payload.activity || 'Validating candidates';
@@ -688,6 +716,16 @@
           state.candidates = payload.candidates || 0;
           state.signalMinerActivity = payload.activity || '';
           if (payload.error) state.error = `Signal Miner: ${payload.error}`;
+        } else if (payload.agent === 'Pattern Profiler Agent') {
+          state.patternProfilerStatus = payload.error ? 'failed' : 'completed';
+          state.profiled = payload.profiled || 0;
+          state.patternProfilerActivity = payload.activity || '';
+          if (payload.error) state.error = `Pattern Profiler: ${payload.error}`;
+        } else if (payload.agent === 'Risk Scorer Agent') {
+          state.riskScorerStatus = payload.error ? 'failed' : 'completed';
+          state.scored = payload.scored || 0;
+          state.riskScorerActivity = payload.activity || '';
+          if (payload.error) state.error = `Risk Scorer: ${payload.error}`;
         } else if (payload.agent === 'Evidence Auditor Agent' || payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = payload.error ? 'failed' : 'completed';
           state.confirmed = payload.confirmed || 0;
@@ -713,6 +751,12 @@
         const out = [];
         if (s.signalMinerStatus === 'running') {
           out.push(`<div class="activity-item"><strong>${s.batch_id} / Signal Miner Agent</strong><br>${s.signalMinerActivity || 'Analyzing transactions'}</div>`);
+        }
+        if (s.patternProfilerStatus === 'running') {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Pattern Profiler Agent</strong><br>${s.patternProfilerActivity || 'Profiling candidates'}</div>`);
+        }
+        if (s.riskScorerStatus === 'running') {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Risk Scorer Agent</strong><br>${s.riskScorerActivity || 'Scoring candidates'}</div>`);
         }
         if (s.auditorStatus === 'running') {
           out.push(`<div class="activity-item"><strong>${s.batch_id} / Evidence Auditor Agent</strong><br>${s.auditorActivity || 'Validating candidates'}</div>`);

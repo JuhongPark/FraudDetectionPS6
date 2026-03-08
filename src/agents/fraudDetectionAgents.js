@@ -5,7 +5,13 @@
 const { Agent, run } = require("@openai/agents");
 require("dotenv").config();
 
-const { analyzeTransactionPatternsTool } = require("../tools/tools");
+const {
+  analyzeTransactionPatternsTool,
+  geoVelocityCheckTool,
+  riskScoreTool,
+  runGeoVelocityCheck,
+  runRiskScore,
+} = require("../tools/tools");
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-5.4";
 
@@ -28,6 +34,28 @@ function createEvidenceAuditorAgent() {
 Always call the analyze_transaction_patterns tool exactly once with analysis_type="precision_validation".
 Then return ONLY JSON: {"confirmed":[{"id":"...","reason":"..."}]}.`,
     tools: [analyzeTransactionPatternsTool],
+  });
+}
+
+function createPatternProfilerAgent() {
+  return new Agent({
+    model: MODEL,
+    name: "PatternProfilerAgent",
+    instructions: `You are a fraud pattern profiler.
+Always call geoVelocityCheckTool exactly once.
+Return ONLY JSON: {"profiled":[{"id":"...","geo_risk":0,"signals":["..."]}]}.`,
+    tools: [geoVelocityCheckTool],
+  });
+}
+
+function createRiskScorerAgent() {
+  return new Agent({
+    model: MODEL,
+    name: "RiskScorerAgent",
+    instructions: `You are a fraud risk scorer.
+Always call riskScoreTool exactly once.
+Return ONLY JSON: {"scored":[{"id":"...","risk_score":0,"priority":"low|medium|high"}]}.`,
+    tools: [riskScoreTool],
   });
 }
 
@@ -113,6 +141,85 @@ Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
   }
 }
 
+async function patternProfilerAgent(batch, candidates, batchId, eventEmitter) {
+  try {
+    eventEmitter.emit("agent_call_started", {
+      timestamp: new Date(),
+      agent: "Pattern Profiler Agent",
+      batch_id: batchId,
+      candidates_to_profile: candidates.length,
+      activity: "Profiling geo/channel anomaly signals for candidates",
+    });
+
+    const agent = createPatternProfilerAgent();
+    const prompt = `Profile these candidates with geo and channel signals.
+Use tool input: {"batch":[...], "candidates":[...]}
+Batch:\n${JSON.stringify(batch, null, 2)}
+Candidates:\n${JSON.stringify(candidates, null, 2)}`;
+    const result = await run(agent, prompt);
+    const profiledFromLlm = extractArray(result.finalOutput, "profiled");
+    const profiled = profiledFromLlm
+      ? mergeById(candidates, profiledFromLlm)
+      : (await runGeoVelocityCheck({ batch, candidates })).profiled;
+
+    eventEmitter.emit("agent_call_finished", {
+      timestamp: new Date(),
+      agent: "Pattern Profiler Agent",
+      batch_id: batchId,
+      profiled: profiled.length,
+      activity: "Candidate profiling completed",
+    });
+    return profiled;
+  } catch (error) {
+    eventEmitter.emit("agent_call_finished", {
+      agent: "Pattern Profiler Agent",
+      batch_id: batchId,
+      error: error.message,
+      using_fallback: true,
+    });
+    return (await runGeoVelocityCheck({ batch, candidates })).profiled;
+  }
+}
+
+async function riskScorerAgent(batch, profiled, batchId, eventEmitter) {
+  try {
+    eventEmitter.emit("agent_call_started", {
+      timestamp: new Date(),
+      agent: "Risk Scorer Agent",
+      batch_id: batchId,
+      records_to_score: profiled.length,
+      activity: "Scoring candidate risk and assigning priority",
+    });
+
+    const agent = createRiskScorerAgent();
+    const prompt = `Score these profiled records.
+Use tool input: {"profiled":[...]}
+Profiled:\n${JSON.stringify(profiled, null, 2)}`;
+    const result = await run(agent, prompt);
+    const scoredFromLlm = extractArray(result.finalOutput, "scored");
+    const scored = scoredFromLlm
+      ? mergeById(profiled, scoredFromLlm)
+      : (await runRiskScore({ profiled })).scored;
+
+    eventEmitter.emit("agent_call_finished", {
+      timestamp: new Date(),
+      agent: "Risk Scorer Agent",
+      batch_id: batchId,
+      scored: scored.length,
+      activity: "Risk scoring completed",
+    });
+    return scored;
+  } catch (error) {
+    eventEmitter.emit("agent_call_finished", {
+      agent: "Risk Scorer Agent",
+      batch_id: batchId,
+      error: error.message,
+      using_fallback: true,
+    });
+    return (await runRiskScore({ profiled })).scored;
+  }
+}
+
 function extractRecords(finalOutput, batch, key) {
   const raw = typeof finalOutput === "string" ? finalOutput : JSON.stringify(finalOutput || {});
   try {
@@ -124,6 +231,25 @@ function extractRecords(finalOutput, batch, key) {
     // Fallback below.
   }
   return parseAgentResponse(raw, batch);
+}
+
+function extractArray(finalOutput, key) {
+  const raw = typeof finalOutput === "string" ? finalOutput : JSON.stringify(finalOutput || {});
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.[key]) ? parsed[key] : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function mergeById(baseRecords, enrichedRecords) {
+  const byId = new Map((baseRecords || []).map((r) => [r.id, r]));
+  for (const item of enrichedRecords || []) {
+    if (!item || !item.id) continue;
+    byId.set(item.id, { ...(byId.get(item.id) || {}), ...item });
+  }
+  return Array.from(byId.values());
 }
 
 function filterToBatch(records, batch) {
@@ -210,6 +336,10 @@ function parseAgentResponse(content, batch) {
 module.exports = {
   createSignalMinerAgent,
   createEvidenceAuditorAgent,
+  createPatternProfilerAgent,
+  createRiskScorerAgent,
   signalMinerAgent,
+  patternProfilerAgent,
+  riskScorerAgent,
   evidenceAuditorAgent,
 };
