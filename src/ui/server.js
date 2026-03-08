@@ -5,7 +5,7 @@ const { FraudPipeline } = require("../pipeline/fraudPipeline");
 const { generateTransactions } = require("../scripts/generateTransactions");
 
 const app = express();
-const port = 8000;
+const port = Number(process.env.PORT || 8000);
 const host = process.env.HOST || "127.0.0.1";
 
 // Configuration

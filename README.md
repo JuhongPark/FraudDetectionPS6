@@ -30,6 +30,7 @@ OPENAI_API_KEY=your_key_here
 OPENAI_MODEL=gpt-5.4
 # Optional
 HOST=127.0.0.1
+PORT=8000
 ```
 4. **Note**: `.env` is excluded from version control (see `.gitignore`) for security, so API secrets are not committed. Only `.env.example` is committed.
 
