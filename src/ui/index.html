@@ -277,9 +277,9 @@
     .agent-name {
       font-weight: 500;
       min-width: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
 
     .agent-result {
@@ -365,14 +365,14 @@
     .tool-row .name {
       color: var(--text-primary);
       font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
     .tool-row .meta {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
 
     /* Suspicious Feed */
@@ -549,9 +549,9 @@
     .activity-label {
       color: var(--text-primary);
       font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
     .activity-msg {
       color: var(--text-secondary);
@@ -897,7 +897,7 @@
           upsertToolState(
             state,
             key,
-            `${payload.agent || 'Agent'} / ${payload.tool_label || payload.tool || 'Tool'}`,
+            `${payload.agent || 'Agent'} -> ${payload.tool_label || payload.tool || 'Tool'}`,
             'running',
             { source: payload.source, activity: payload.activity || 'running' }
           );
@@ -918,7 +918,7 @@
           upsertToolState(
             state,
             key,
-            `${payload.agent || 'Agent'} / ${payload.tool_label || payload.tool || 'Tool'}`,
+            `${payload.agent || 'Agent'} -> ${payload.tool_label || payload.tool || 'Tool'}`,
             payload.error ? 'failed' : 'completed',
             { source: payload.source, activity: payload.activity || '' }
           );
@@ -963,20 +963,20 @@
       const active = Object.values(states).flatMap((s) => {
         const out = [];
         if (s.signalMinerStatus === 'running') {
-          out.push(makeActivity(`${s.batch_id} / Signal Miner Agent`, s.signalMinerActivity || 'Analyzing transactions'));
+          out.push(makeActivity(`${s.batch_id} -> Signal Miner Agent`, s.signalMinerActivity || 'Analyzing transactions'));
         }
         if (s.patternProfilerStatus === 'running') {
-          out.push(makeActivity(`${s.batch_id} / Pattern Profiler Agent`, s.patternProfilerActivity || 'Profiling candidates'));
+          out.push(makeActivity(`${s.batch_id} -> Pattern Profiler Agent`, s.patternProfilerActivity || 'Profiling candidates'));
         }
         if (s.riskScorerStatus === 'running') {
-          out.push(makeActivity(`${s.batch_id} / Risk Scorer Agent`, s.riskScorerActivity || 'Scoring candidates'));
+          out.push(makeActivity(`${s.batch_id} -> Risk Scorer Agent`, s.riskScorerActivity || 'Scoring candidates'));
         }
         if (s.auditorStatus === 'running') {
-          out.push(makeActivity(`${s.batch_id} / Evidence Auditor Agent`, s.auditorActivity || 'Validating candidates'));
+          out.push(makeActivity(`${s.batch_id} -> Evidence Auditor Agent`, s.auditorActivity || 'Validating candidates'));
         }
         Object.values(s.toolStates || {}).forEach((t) => {
           if (t.status === 'running') {
-            out.push(makeActivity(`${s.batch_id} / Tool`, `${t.label || t.tool} running`));
+            out.push(makeActivity(`${s.batch_id} -> Tool`, `${t.label || t.tool} running`));
           }
         });
         return out;
