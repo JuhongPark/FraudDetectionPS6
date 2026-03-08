@@ -21,9 +21,11 @@ Build a demo fraud-detection pipeline that processes 100 transactions in 5 paral
 ## 1.2 Monitoring Quality Validator (Continuous Improvement Gate)
 - Add a dedicated validator role that evaluates whether Agent/Tool-call monitoring is visually clear and operationally useful.
 - This validator must run on every improvement cycle before a change is accepted.
+- This validator must explicitly evaluate design quality (visual hierarchy, readability, and aesthetic coherence), not only technical correctness.
 - The validator outputs:
 	- pass/fail decision for monitoring quality
 	- concrete gaps found in current UI/telemetry
+	- concrete design/UX gaps that block operator comprehension
 	- prioritized next improvement actions
 - No monitoring-related change is considered complete without validator sign-off.
 
@@ -104,6 +106,8 @@ Build a demo fraud-detection pipeline that processes 100 transactions in 5 paral
 	- Can an operator identify current system state within a few seconds?
 	- Are Agent/Tool call transitions visually distinguishable (start, success, failure)?
 	- Are delays and failures visible without inspecting backend logs?
+	- Is information hierarchy visually clear (priority, severity, timeline)?
+	- Is typography/color/layout readable enough for fast operational scanning?
 	- Is the next UI improvement direction explicitly documented?
 - Registry integrity checklist:
 	- Agent panel events have matching entries in `AGENT_REGISTRY.md`
