@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fraud Detection Monitor</title>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --card: #ffffff;
+      --text: #1f2a2e;
+      --muted: #5d6d72;
+      --accent: #007c6d;
+      --warn: #ad6800;
+      --ok: #2a7a1f;
+      --border: #d6e1de;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #eef6f4 0%, var(--bg) 48%, #e6f0ee 100%);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { margin: 0 0 6px; letter-spacing: 0.2px; }
+    .sub { color: var(--muted); margin-bottom: 18px; }
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-pill { padding: 8px 12px; border-radius: 999px; background: #dff2ef; color: #0b5f56; font-weight: 600; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 220px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 1rem; }
+    .kpi { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .kpi div { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #f8fbfa; }
+    .log {
+      max-height: 280px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfdfc;
+    }
+    .line { padding: 6px 4px; border-bottom: 1px dashed #e6eeec; font-size: 0.9rem; }
+    .line:last-child { border-bottom: none; }
+    .suspicious { color: var(--warn); font-weight: 600; }
+    .ok { color: var(--ok); font-weight: 600; }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Fraud Detection Monitoring</h1>
+    <div class="sub">Visual monitoring for Agent/Tool calls and near-real-time suspicious transactions.</div>
+
+    <div class="toolbar">
+      <button id="runBtn">Run Pipeline</button>
+      <div id="running" class="status-pill">Idle</div>
+    </div>
+
+    <div class="kpi" id="summary"></div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Agent Panel</h2>
+        <div class="log" id="agentLog"></div>
+      </section>
+
+      <section class="card">
+        <h2>Tool Call Panel</h2>
+        <div class="log" id="toolLog"></div>
+      </section>
+
+      <section class="card">
+        <h2>Batch Lifecycle</h2>
+        <div class="log" id="batchLog"></div>
+      </section>
+
+      <section class="card">
+        <h2>Suspicious Transactions</h2>
+        <div class="log" id="suspiciousLog"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const runBtn = document.getElementById('runBtn');
+    const running = document.getElementById('running');
+
+    function formatTs(ts) {
+      const d = new Date(ts * 1000);
+      return d.toLocaleTimeString();
+    }
+
+    function renderSummary(summary, lastResult) {
+      const el = document.getElementById('summary');
+      const total = lastResult && lastResult.total_transactions ? lastResult.total_transactions : 0;
+      const suspicious = summary.suspicious_found || 0;
+      el.innerHTML = `
+        <div><strong>Total Txn</strong><br/>${total}</div>
+        <div><strong>Batch Started</strong><br/>${summary.batch_started || 0}</div>
+        <div><strong>Batch Finished</strong><br/>${summary.batch_finished || 0}</div>
+        <div><strong>Suspicious Found</strong><br/><span class="suspicious">${suspicious}</span></div>
+      `;
+    }
+
+    function renderLog(id, events, formatter) {
+      const el = document.getElementById(id);
+      el.innerHTML = events.slice(-80).reverse().map(formatter).join('');
+    }
+
+    async function refresh() {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      running.textContent = data.running ? 'Running' : 'Idle';
+      runBtn.disabled = data.running;
+
+      renderSummary(data.summary, data.last_result || {});
+
+      renderLog('agentLog', data.agent_events || [], (e) => {
+        const p = e.payload;
+        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.agent} | ${p.batch_id || '-'}</div>`;
+      });
+
+      renderLog('toolLog', data.tool_events || [], (e) => {
+        const p = e.payload;
+        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.tool} | ${JSON.stringify(p)}</div>`;
+      });
+
+      renderLog('batchLog', data.batch_events || [], (e) => {
+        const p = e.payload;
+        return `<div class="line"><strong>${formatTs(e.ts)}</strong> | ${e.type} | ${p.batch_id || '-'}</div>`;
+      });
+
+      const suspiciousItems = (data.suspicious || []).map((x) =>
+        `<div class="line"><span class="suspicious">${x.id}</span> - ${x.reason}</div>`
+      );
+      document.getElementById('suspiciousLog').innerHTML = suspiciousItems.length
+        ? suspiciousItems.join('')
+        : '<div class="line ok">No suspicious transactions yet.</div>';
+    }
+
+    runBtn.addEventListener('click', async () => {
+      await fetch('/api/run', { method: 'POST' });
+      refresh();
+    });
+
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>

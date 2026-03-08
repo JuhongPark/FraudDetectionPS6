@@ -11,12 +11,13 @@ Source of truth for all active agents used in this project.
 
 | Agent Name | Role | Trigger Condition | Inputs | Outputs | UI Panel Field Mapping | Owner | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Signal Miner | Detect suspicious candidates from each batch | Batch received (size=20) | Batch transactions | Candidate suspicious records | `agent.name`, `agent.state`, `agent.startedAt`, `agent.endedAt` | Detection | planned |
-| Evidence Auditor | Validate candidate records using transaction evidence | Candidate list available | Batch + candidate records | Confirmed suspicious records | `agent.name`, `agent.state`, `agent.resultSummary` | Detection | planned |
-| Monitoring Quality Validator | Review visual clarity of monitoring UX on each iteration | UI/telemetry change merged | UI state + telemetry samples | Pass/fail + prioritized improvements | `agent.name`, `agent.state`, `agent.decision` | UI | planned |
+| Signal Miner | Detect suspicious candidates from each batch | Batch received (size=20) | Batch transactions | Candidate suspicious records | `agent.name`, `agent.state`, `agent.startedAt`, `agent.endedAt` | Detection | active |
+| Evidence Auditor | Validate candidate records using transaction evidence | Candidate list available | Batch + candidate records | Confirmed suspicious records | `agent.name`, `agent.state`, `agent.resultSummary` | Detection | active |
+| Monitoring Quality Validator | Review visual clarity of monitoring UX on each iteration | UI/telemetry change merged | UI state + telemetry samples | Pass/fail + prioritized improvements | `agent.name`, `agent.state`, `agent.decision` | UI | active |
 
 ## Change Log
 
 | Date | Change | Updated By |
 | --- | --- | --- |
 | 2026-03-07 | Initial registry template created | Copilot |
+| 2026-03-07 | Updated statuses to active for implemented monitoring flow | Copilot |

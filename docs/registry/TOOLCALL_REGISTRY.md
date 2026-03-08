@@ -11,11 +11,12 @@ Source of truth for all tool calls used in this project.
 
 | Tool Name | Purpose | Called By | Input Schema (Summary) | Output Schema (Summary) | Telemetry Fields | Failure Handling | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| suspiciousTransactions | Append/read suspicious transaction state | Case Consolidator | transaction list with `{id, reason}` | updated state summary | `tool.name`, `tool.state`, `tool.startedAt`, `tool.endedAt`, `tool.error` | retry once, then warning | planned |
-| uiEventStream | Push monitoring events to UI | Pipeline / UI bridge | event payload with batch/agent/tool status | delivery ack | `tool.name`, `tool.state`, `tool.eventType`, `tool.latencyMs` | retry once, then warning | planned |
+| suspiciousTransactions | Append/read suspicious transaction state | Case Consolidator | transaction list with `{id, reason}` | updated state summary | `tool`, `record_count`, `written`, `total` | retry once, then warning | active |
+| uiEventStream | Push monitoring events to UI | Pipeline / UI bridge | event payload with batch/agent/tool status | event appended to stream | `tool`, `purpose`, `status` | retry once, then warning | active |
 
 ## Change Log
 
 | Date | Change | Updated By |
 | --- | --- | --- |
 | 2026-03-07 | Initial registry template created | Copilot |
+| 2026-03-07 | Updated statuses and telemetry mapping to implemented flow | Copilot |
