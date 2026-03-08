@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # Python virtual environment
 .venv/
+
+# VS Code workspace settings
+.vscode/
