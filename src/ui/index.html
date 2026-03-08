@@ -201,6 +201,11 @@
       background: rgba(234, 67, 53, 0.1);
       color: var(--accent-red);
     }
+    .batch-status.suspicious {
+      background: rgba(251, 188, 4, 0.18);
+      color: #fbbc04;
+      border: 1px solid rgba(251, 188, 4, 0.35);
+    }
 
     /* Agent Steps */
     .agent-steps {
@@ -676,6 +681,20 @@
         opts.suspiciousBatch ? 'suspicious-batch' : '',
         opts.flash ? 'new-entry' : ''
       ].filter(Boolean).join(' ');
+      const statusClass = state.status === 'failed'
+        ? 'failed'
+        : opts.suspiciousBatch
+          ? 'suspicious'
+          : state.status;
+      const statusLabel = state.status === 'failed'
+        ? '✕ Failed'
+        : opts.suspiciousBatch
+          ? `⚠ Suspicious Detected (${state.confirmed || 0})`
+          : state.status === 'completed'
+            ? '✓ Done'
+            : state.status === 'running'
+              ? '⟳ Running'
+              : '○ Pending';
       const toolEntries = Object.values(state.toolStates || {});
       const toolRows = toolEntries
         .sort((a, b) => {
@@ -704,8 +723,8 @@
         <div class="${cardClass}">
           <div class="batch-header">
             <span>${batchId}</span>
-            <div class="batch-status ${state.status}">
-              ${state.status === 'completed' ? '✓ Done' : state.status === 'running' ? '⟳ Running' : '○ Pending'}
+            <div class="batch-status ${statusClass}">
+              ${statusLabel}
             </div>
           </div>
 
