@@ -118,6 +118,16 @@
       gap: 12px;
       margin-bottom: 24px;
     }
+    .main-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .left-column,
+    .right-column {
+      min-width: 0;
+    }
 
     .btn {
       padding: 10px 16px;
@@ -553,6 +563,9 @@
 
     /* Responsive */
     @media (max-width: 768px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
       .batches-grid {
         grid-template-columns: 1fr;
       }
@@ -612,37 +625,43 @@
       <button id="runBtn" class="btn">▶ Run Pipeline</button>
     </div>
 
-    <!-- Batch Cards -->
-    <div class="batches-grid" id="batchesContainer"></div>
+    <div class="main-layout">
+      <div class="left-column">
+        <!-- Batch Cards -->
+        <div class="batches-grid" id="batchesContainer"></div>
+      </div>
 
-    <!-- Current Activity -->
-    <div class="activity-section">
-      <div class="suspicious-header">
-        <span>Current Activity</span>
-      </div>
-      <div class="activity-list" id="activityList">
-        <div class="empty-state">No active agent or tool operations</div>
-      </div>
-    </div>
+      <div class="right-column">
+        <!-- Suspicious Transactions -->
+        <div class="suspicious-section">
+          <div class="suspicious-header">
+            <span>Suspicious Transactions</span>
+            <div id="suspiciousBadge" class="suspicious-count">0</div>
+          </div>
+          <div class="suspicious-list" id="suspiciousList">
+            <div class="empty-state">No suspicious transactions yet</div>
+          </div>
+        </div>
 
-    <!-- Timeline -->
-    <div class="timeline-section">
-      <div class="suspicious-header">
-        <span>Execution Timeline</span>
-      </div>
-      <div class="timeline-list" id="timelineList">
-        <div class="empty-state">No events yet</div>
-      </div>
-    </div>
+        <!-- Current Activity -->
+        <div class="activity-section">
+          <div class="suspicious-header">
+            <span>Current Activity</span>
+          </div>
+          <div class="activity-list" id="activityList">
+            <div class="empty-state">No active agent or tool operations</div>
+          </div>
+        </div>
 
-    <!-- Suspicious Transactions -->
-    <div class="suspicious-section">
-      <div class="suspicious-header">
-        <span>Suspicious Transactions</span>
-        <div id="suspiciousBadge" class="suspicious-count">0</div>
-      </div>
-      <div class="suspicious-list" id="suspiciousList">
-        <div class="empty-state">No suspicious transactions yet</div>
+        <!-- Timeline -->
+        <div class="timeline-section">
+          <div class="suspicious-header">
+            <span>Execution Timeline</span>
+          </div>
+          <div class="timeline-list" id="timelineList">
+            <div class="empty-state">No events yet</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
