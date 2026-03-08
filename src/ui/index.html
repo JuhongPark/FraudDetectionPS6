@@ -472,9 +472,26 @@
       background: rgba(91, 156, 245, 0.12);
       font-size: 12px;
       line-height: 1.35;
+      display: grid;
+      grid-template-columns: minmax(160px, 260px) 1fr;
+      gap: 10px;
+      align-items: center;
     }
     .activity-item strong {
       color: var(--text-primary);
+    }
+    .activity-label {
+      color: var(--text-primary);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .activity-msg {
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Responsive */
@@ -485,6 +502,13 @@
       .status-bar {
         flex-direction: column;
         align-items: flex-start;
+      }
+      .activity-item {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .activity-msg {
+        white-space: normal;
       }
     }
   </style>
@@ -771,25 +795,27 @@
     }
 
     function renderActivity(states) {
+      const makeActivity = (label, msg) =>
+        `<div class="activity-item"><div class="activity-label">${label}</div><div class="activity-msg">${msg}</div></div>`;
       const active = Object.values(states).flatMap((s) => {
         const out = [];
         if (s.signalMinerStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Signal Miner Agent</strong><br>${s.signalMinerActivity || 'Analyzing transactions'}</div>`);
+          out.push(makeActivity(`${s.batch_id} / Signal Miner Agent`, s.signalMinerActivity || 'Analyzing transactions'));
         }
         if (s.patternProfilerStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Pattern Profiler Agent</strong><br>${s.patternProfilerActivity || 'Profiling candidates'}</div>`);
+          out.push(makeActivity(`${s.batch_id} / Pattern Profiler Agent`, s.patternProfilerActivity || 'Profiling candidates'));
         }
         if (s.riskScorerStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Risk Scorer Agent</strong><br>${s.riskScorerActivity || 'Scoring candidates'}</div>`);
+          out.push(makeActivity(`${s.batch_id} / Risk Scorer Agent`, s.riskScorerActivity || 'Scoring candidates'));
         }
         if (s.auditorStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Evidence Auditor Agent</strong><br>${s.auditorActivity || 'Validating candidates'}</div>`);
+          out.push(makeActivity(`${s.batch_id} / Evidence Auditor Agent`, s.auditorActivity || 'Validating candidates'));
         }
         if (s.toolStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / suspiciousTransactions Tool</strong><br>${s.toolActivity || 'Writing suspicious records'}</div>`);
+          out.push(makeActivity(`${s.batch_id} / suspiciousTransactions Tool`, s.toolActivity || 'Writing suspicious records'));
         }
         Object.values(s.activeAgentTools || {}).forEach((t) => {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / ${t.agent || 'Agent'}</strong><br>${t.tool_label || t.tool || 'Tool'} running</div>`);
+          out.push(makeActivity(`${s.batch_id} / ${t.agent || 'Agent'}`, `${t.tool_label || t.tool || 'Tool'} running`));
         });
         return out;
       });
