@@ -157,6 +157,14 @@
       padding: 16px;
       transition: all 0.2s;
     }
+    .batch-card.suspicious-batch {
+      border-color: var(--accent-orange);
+      background: rgba(251, 188, 4, 0.08);
+      box-shadow: 0 0 0 1px rgba(251, 188, 4, 0.18);
+    }
+    .batch-card.new-entry {
+      animation: subtleNewItem 1s ease-out 1;
+    }
 
     .batch-card:hover {
       border-color: var(--accent-blue);
@@ -599,7 +607,9 @@
 
     let batchStates = {};
     let seenSuspiciousIds = new Set();
+    let seenSuspiciousBatchIds = new Set();
     let lastFlashTs = 0;
+    let lastBatchFlashTs = 0;
 
     function getAgentIcon(type) {
       const icons = {
@@ -611,9 +621,14 @@
       return icons[type] || '○';
     }
 
-    function renderBatchCard(batchId, state) {
+    function renderBatchCard(batchId, state, opts = {}) {
+      const cardClass = [
+        'batch-card',
+        opts.suspiciousBatch ? 'suspicious-batch' : '',
+        opts.flash ? 'new-entry' : ''
+      ].filter(Boolean).join(' ');
       return `
-        <div class="batch-card">
+        <div class="${cardClass}">
           <div class="batch-header">
             <span>${batchId}</span>
             <div class="batch-status ${state.status}">
@@ -893,7 +908,15 @@
         return numA - numB;
       });
 
-      batchesContainer.innerHTML = sortedIds.map(id => renderBatchCard(id, batchStates[id])).join('');
+      const now = Date.now();
+      batchesContainer.innerHTML = sortedIds.map((id) => {
+        const state = batchStates[id];
+        const suspiciousBatch = (state?.confirmed || 0) > 0;
+        const flash = suspiciousBatch && !seenSuspiciousBatchIds.has(id) && now - lastBatchFlashTs > 3000;
+        if (flash) lastBatchFlashTs = now;
+        if (suspiciousBatch) seenSuspiciousBatchIds.add(id);
+        return renderBatchCard(id, state, { suspiciousBatch, flash });
+      }).join('');
     }
 
     function renderSuspicious(items) {
@@ -962,7 +985,9 @@
       await fetch('/api/run', { method: 'POST' });
       batchStates = {};
       seenSuspiciousIds = new Set();
+      seenSuspiciousBatchIds = new Set();
       lastFlashTs = 0;
+      lastBatchFlashTs = 0;
       refresh();
     });
 
