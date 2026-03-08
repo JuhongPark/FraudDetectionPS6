@@ -83,6 +83,15 @@ pipeline.on("batch_finished", (data) => {
   });
 });
 
+pipeline.on("batch_failed", (data) => {
+  appState.events.push({
+    id: appState.events.length,
+    ts: Date.now() / 1000,
+    type: "batch_failed",
+    payload: data,
+  });
+});
+
 pipeline.on("tool_call_started", (data) => {
   appState.events.push({
     id: appState.events.length,
@@ -133,6 +142,11 @@ app.get("/api/status", (req, res) => {
   const batchFinished = appState.events.filter(
     (e) => e.type === "batch_finished"
   ).length;
+  const failureCount = appState.events.filter(
+    (e) =>
+      e.type === "batch_failed" ||
+      (e.type === "agent_call_finished" && e.payload && e.payload.error)
+  ).length;
   const suspicious = fs.existsSync(config.suspiciousFile)
     ? JSON.parse(fs.readFileSync(config.suspiciousFile, "utf-8"))
     : [];
@@ -144,12 +158,15 @@ app.get("/api/status", (req, res) => {
         .length,
       batch_finished: batchFinished,
       suspicious_found: suspicious.length,
+      failures: failureCount,
     },
     agent_events: appState.events.filter((e) =>
       e.type.startsWith("agent_call_")
     ),
     batch_events: appState.events.filter((e) => e.type.startsWith("batch_")),
     tool_events: appState.events.filter((e) => e.type.startsWith("tool_")),
+    pipeline_events: appState.events.filter((e) => e.type.startsWith("pipeline_")),
+    timeline_events: appState.events.slice(-150),
     suspicious: suspicious,
     last_result: appState.lastResult,
   });

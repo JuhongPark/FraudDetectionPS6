@@ -20,8 +20,10 @@ async function analyzeTransactionPatterns(input) {
 }
 
 async function writeSuspiciousTransactions(input) {
-  const { transactions } = input;
-  const suspiciousFile = path.join(__dirname, "../../data/suspiciousTransactions.json");
+  const { transactions, output_file } = input;
+  const suspiciousFile = output_file
+    ? path.resolve(output_file)
+    : path.join(__dirname, "../../data/suspiciousTransactions.json");
 
   const existing = fs.existsSync(suspiciousFile)
     ? JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"))
@@ -93,6 +95,9 @@ const suspiciousTransactionsTool = tool({
             reason: { type: "string" },
           },
         },
+      },
+      output_file: {
+        type: "string",
       },
     },
     required: ["transactions"],

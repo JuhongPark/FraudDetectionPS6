@@ -13,10 +13,13 @@ function chunkTransactions(transactions, batchSize = 20) {
 }
 
 class FraudPipeline {
-  constructor(config) {
+  constructor(config, deps = {}) {
     this.config = config;
     this.eventEmitter = new EventEmitter();
     this.suspiciousTransactions = [];
+    this.signalMiner = deps.signalMinerAgent || signalMinerAgent;
+    this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
+    this.writeSuspicious = deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
   }
 
   on(event, listener) {
@@ -85,14 +88,14 @@ class FraudPipeline {
 
     try {
       // Run Signal Miner
-      const candidates = await signalMinerAgent(
+      const candidates = await this.signalMiner(
         batch,
         batchId,
         this.eventEmitter
       );
 
       // Run Evidence Auditor
-      const confirmed = await evidenceAuditorAgent(
+      const confirmed = await this.evidenceAuditor(
         batch,
         candidates,
         batchId,
@@ -107,7 +110,10 @@ class FraudPipeline {
           record_count: confirmed.length,
         });
 
-        const toolResult = await writeSuspiciousTransactions({ transactions: confirmed });
+        const toolResult = await this.writeSuspicious({
+          transactions: confirmed,
+          output_file: this.config.suspiciousFile,
+        });
 
         this.eventEmitter.emit("tool_call_finished", {
           batch_id: batchId,
@@ -142,6 +148,11 @@ class FraudPipeline {
       this.eventEmitter.emit("batch_failed", {
         batch_id: batchId,
         error: error.message,
+      });
+      this.eventEmitter.emit("batch_finished", {
+        batch_id: batchId,
+        confirmed: 0,
+        failed: true,
       });
       return [];
     }
