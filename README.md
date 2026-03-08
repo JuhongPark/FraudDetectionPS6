@@ -17,4 +17,25 @@ Parallel Agent/LLM Calls: Send each batch to Openai model concurrently
 
 Aggregation: Write suspicious transactions into the file and to the UI via a suspiciousTransactions Tool
 
+## Setup
+
+### OpenAI API Configuration
+
+To use the OpenAI LLM for fraud detection, you need to configure your API key:
+
+1. Copy the template file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=...
+   OPENAI_MODEL=gpt-4
+   ```
+
+3. **Note**: The `.env` file is excluded from version control (see `.gitignore`). Only `.env.example` is committed.
+
+For detailed specification and architecture, see [docs/spec/SPEC.md](docs/spec/SPEC.md).
+
 
