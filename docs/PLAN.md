@@ -8,6 +8,7 @@
 - Hallucination is strictly unacceptable for this project.
 - If ambiguity appears, stop and resolve it against `docs/spec/SPEC.md` before proceeding.
 - If a requested change conflicts with `docs/spec/SPEC.md`, prioritize the spec and document the conflict explicitly.
+- Active implementation platform is Node.js (`@openai/agents` compatible runtime).
 
 ## 1. Goal
 Build a demo fraud-detection pipeline that processes 100 transactions in 5 parallel batches (20 each), accumulates suspicious results into a single state file, and shows near-real-time monitoring in UI.
@@ -45,11 +46,9 @@ Build a demo fraud-detection pipeline that processes 100 transactions in 5 paral
 - Basic tests for core pipeline behavior
 
 ## 3. Deliverables
-- `scripts/generate_transactions.py`: generate demo input data with a few suspicious transactions per batch
-- `src/chunking/`: batch split utility
-- `src/detection/`: fraud detection logic (rule-based baseline + LLM hook interface)
-- `src/pipeline/`: parallel orchestration and event emission
-- `src/aggregation/`: append/read suspicious state file
+- `src/scripts/generateTransactions.js`: generate demo input data with a few suspicious transactions per batch
+- `src/pipeline/fraudPipeline.js`: parallel orchestration and event emission
+- `src/agents/fraudDetectionAgents.js`: fraud detection agents and model calls
 - `src/tools/`: suspiciousTransactions tool interface
 - `src/ui/`: monitoring UI and live suspicious feed
 - `src/ui/monitoring_validator.md`: validator checklist and scoring rubric for monitoring quality
@@ -142,13 +141,13 @@ Build a demo fraud-detection pipeline that processes 100 transactions in 5 paral
 	- Mitigation: throttle UI updates (e.g., 200-500ms cadence)
 
 ## 8. Suggested Next Implementation Order
-1. `scripts/generate_transactions.py`
-2. `src/chunking/chunker.py`
-3. `src/detection/detector.py`
-4. `src/aggregation/suspicious_store.py`
-5. `src/pipeline/run_pipeline.py`
-6. `src/ui/` minimal monitoring page
-7. `tests/` and end-to-end verification
+1. `src/scripts/generateTransactions.js`
+2. `src/agents/fraudDetectionAgents.js`
+3. `src/tools/tools.js`
+4. `src/pipeline/fraudPipeline.js`
+5. `src/ui/server.js` + `src/ui/index.html`
+6. `docs/registry/` updates
+7. `tests/` and end-to-end verification on Node.js path
 
 ## 9. Iterative Improvement Loop (Required)
 1. Implement monitoring/UI improvement.

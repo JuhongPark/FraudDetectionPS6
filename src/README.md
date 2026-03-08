@@ -1,8 +1,7 @@
 # Source Modules
 
-- `chunking/`: split incoming transactions into fixed-size batches
-- `detection/`: evaluate suspicious patterns and model decisions
-- `pipeline/`: dispatch batches in parallel and coordinate completion
-- `aggregation/`: maintain suspicious transaction accumulator state
-- `tools/`: exposed tool interfaces used by agents
+- `scripts/`: generate demo transactions
+- `agents/`: SignalMiner/EvidenceAuditor definitions (`@openai/agents`)
+- `pipeline/`: batch orchestration (`fraudPipeline.js`)
+- `tools/`: tool definitions and persistence interfaces
 - `ui/`: monitoring and live suspicious transaction display

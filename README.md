@@ -21,7 +21,9 @@ Aggregation: Write suspicious transactions into the file and to the UI via a sus
 
 ### OpenAI API Configuration
 
-To use the OpenAI LLM for fraud detection, you need to configure your API key:
+This project is operated on a Node.js runtime using `@openai/agents`.
+
+To use the OpenAI LLM for fraud detection, configure your API key:
 
 1. Copy the template file:
    ```bash
@@ -31,11 +33,9 @@ To use the OpenAI LLM for fraud detection, you need to configure your API key:
 2. Edit `.env` and add your OpenAI API key:
    ```
    OPENAI_API_KEY=...
-   OPENAI_MODEL=gpt-5.3
+   OPENAI_MODEL=gpt-4-turbo
    ```
 
 3. **Note**: The `.env` file is excluded from version control (see `.gitignore`). Only `.env.example` is committed.
 
 For detailed specification and architecture, see [docs/spec/SPEC.md](docs/spec/SPEC.md).
-
-
