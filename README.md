@@ -1,41 +1,51 @@
 # FraudDetection PS-6
-The goal is to detect Fraud in a large dataset that is larger than the context window. This means we need to break the data into chunks and process these chunks in parallel. 
-The schema in sampleData.json gives some examples of transactions with some most likely fraudulent. We will start with a demo using only 100 transactions but these should be chunked into 5 batches of 20 and processed in parallel.
-The user interface should allow monitoring of Agent and Tool calls so you can check what is happening. You should accumulate fraudulent transactions into a single file. You can view this accumulator as keeping "state" of the app.  
-Your UI should display the fraudulent transactions in near real time. 
 
-You should create around 100 transactions with a few that are fraudulent in each batch. 
-## High-Level Architecture
+Node.js fraud-detection demo using `@openai/agents`.
 
-You probably want the following:
+## What It Does
+- Generates 100 demo transactions
+- Splits into 5 batches of 20
+- Runs two agents per batch (`Signal Miner` -> `Evidence Auditor`)
+- Persists suspicious results to `data/suspiciousTransactions.json`
+- Shows batch/agent/tool activity in a monitoring UI
 
-Input: Stream/list of transactions
-
-Chunking: Split into batches of 20
-
-Parallel Agent/LLM Calls: Send each batch to Openai model concurrently
-
-Aggregation: Write suspicious transactions into the file and to the UI via a suspiciousTransactions Tool
+## Requirements
+- Node.js 22+
+- OpenAI API key
 
 ## Setup
+1. Install dependencies:
+```bash
+npm ci
+```
 
-### OpenAI API Configuration
+2. Create env file:
+```bash
+cp .env.example .env
+```
 
-This project is operated on a Node.js runtime using `@openai/agents`.
+3. Set values in `.env`:
+```bash
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5.4
+```
 
-To use the OpenAI LLM for fraud detection, configure your API key:
+## Run
+1. Start server:
+```bash
+npm start
+```
+2. Open `http://127.0.0.1:8000`
+3. Click `Run Pipeline`
 
-1. Copy the template file:
-   ```bash
-   cp .env.example .env
-   ```
+## Test
+```bash
+npm test
+```
 
-2. Edit `.env` and add your OpenAI API key:
-   ```
-   OPENAI_API_KEY=...
-   OPENAI_MODEL=gpt-5.4
-   ```
-
-3. **Note**: The `.env` file is excluded from version control (see `.gitignore`). Only `.env.example` is committed.
-
-For detailed specification and architecture, see [docs/spec/SPEC.md](docs/spec/SPEC.md).
+## Key Paths
+- Spec: `docs/spec/SPEC.md`
+- UI server: `src/ui/server.js`
+- Pipeline: `src/pipeline/fraudPipeline.js`
+- Agents: `src/agents/fraudDetectionAgents.js`
+- Tools: `src/tools/tools.js`
