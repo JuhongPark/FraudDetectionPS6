@@ -141,5 +141,10 @@ vite.config.ts.timestamp-*
 # Python virtual environment
 .venv/
 
+# Python cache and runtime artifacts
+__pycache__/
+*.py[cod]
+output/
+
 # VS Code workspace settings
 .vscode/
