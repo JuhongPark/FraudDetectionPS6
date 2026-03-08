@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
 const { signalMinerAgent, evidenceAuditorAgent } = require("../agents/fraudDetectionAgents");
+const { suspiciousTransactionsTool } = require("../tools/tools");
 
 function chunkTransactions(transactions, batchSize = 20) {
   const batches = [];
@@ -104,7 +105,22 @@ class FraudPipeline {
         this.eventEmitter
       );
 
-      // Emit suspicious transactions
+      // Emit suspicious transactions via Tool
+      if (confirmed.length > 0) {
+        const toolResult = await suspiciousTransactionsTool.fn(
+          { transactions: confirmed },
+          this.eventEmitter
+        );
+        
+        this.eventEmitter.emit("tool_executed", {
+          batch_id: batchId,
+          tool: "suspiciousTransactions",
+          written: toolResult.written,
+          total: toolResult.total
+        });
+      }
+
+      // Also emit individual events for UI
       for (const item of confirmed) {
         this.eventEmitter.emit("suspicious_found", {
           batch_id: batchId,
