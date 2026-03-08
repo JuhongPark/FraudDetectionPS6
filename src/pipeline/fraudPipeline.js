@@ -107,6 +107,7 @@ class FraudPipeline {
         this.eventEmitter.emit("tool_call_started", {
           batch_id: batchId,
           tool: "suspiciousTransactions",
+          tool_label: "suspiciousTransactions Tool",
           record_count: confirmed.length,
           activity: "Persisting confirmed suspicious transactions",
         });
@@ -119,6 +120,7 @@ class FraudPipeline {
         this.eventEmitter.emit("tool_call_finished", {
           batch_id: batchId,
           tool: toolResult.tool,
+          tool_label: "suspiciousTransactions Tool",
           written: toolResult.written,
           total: toolResult.total,
           activity: "Suspicious transaction persistence completed",
@@ -126,6 +128,7 @@ class FraudPipeline {
         this.eventEmitter.emit("tool_executed", {
           batch_id: batchId,
           tool: toolResult.tool,
+          tool_label: "suspiciousTransactions Tool",
           written: toolResult.written,
           total: toolResult.total
         });

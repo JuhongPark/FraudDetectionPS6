@@ -594,7 +594,7 @@
               <div class="agent-icon ${state.signalMinerStatus}">
                 ${getAgentIcon(state.signalMinerStatus)}
               </div>
-              <span class="agent-name">Signal Miner</span>
+              <span class="agent-name">Signal Miner Agent</span>
               <span class="agent-result">${state.signalMinerStatus === 'running' ? (state.signalMinerActivity || 'running...') : `${state.candidates || 0} candidates`}</span>
             </div>
 
@@ -602,7 +602,7 @@
               <div class="agent-icon ${state.auditorStatus}">
                 ${getAgentIcon(state.auditorStatus)}
               </div>
-              <span class="agent-name">Evidence Auditor</span>
+              <span class="agent-name">Evidence Auditor Agent</span>
               <span class="agent-result">${state.auditorStatus === 'running' ? (state.auditorActivity || 'running...') : `${state.confirmed || 0} confirmed`}</span>
             </div>
           </div>
@@ -610,7 +610,7 @@
           ${state.toolStatus !== 'pending' ? `
             <div class="tool-box ${state.toolStatus}">
               <div class="tool-header ${state.toolStatus === 'failed' ? 'failed' : ''}">
-                📦 Write Tool (${state.toolStatus})
+                📦 suspiciousTransactions Tool (${state.toolStatus})
               </div>
               <div class="tool-stat">
                 <span class="tool-stat-label">Written:</span>
@@ -667,20 +667,20 @@
         state.status = 'failed';
         state.error = `Batch failed: ${payload.error || 'unknown error'}`;
       } else if (type === 'agent_call_started') {
-        if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
+        if (payload.agent === 'Signal Miner Agent' || payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = 'running';
           state.signalMinerActivity = payload.activity || 'Analyzing transactions';
-        } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
+        } else if (payload.agent === 'Evidence Auditor Agent' || payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = 'running';
           state.auditorActivity = payload.activity || 'Validating candidates';
         }
       } else if (type === 'agent_call_finished') {
-        if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
+        if (payload.agent === 'Signal Miner Agent' || payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = payload.error ? 'failed' : 'completed';
           state.candidates = payload.candidates || 0;
           state.signalMinerActivity = payload.activity || '';
           if (payload.error) state.error = `Signal Miner: ${payload.error}`;
-        } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
+        } else if (payload.agent === 'Evidence Auditor Agent' || payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = payload.error ? 'failed' : 'completed';
           state.confirmed = payload.confirmed || 0;
           state.auditorActivity = payload.activity || '';
@@ -704,13 +704,13 @@
       const active = Object.values(states).flatMap((s) => {
         const out = [];
         if (s.signalMinerStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Signal Miner</strong><br>${s.signalMinerActivity || 'Analyzing transactions'}</div>`);
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Signal Miner Agent</strong><br>${s.signalMinerActivity || 'Analyzing transactions'}</div>`);
         }
         if (s.auditorStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / Evidence Auditor</strong><br>${s.auditorActivity || 'Validating candidates'}</div>`);
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / Evidence Auditor Agent</strong><br>${s.auditorActivity || 'Validating candidates'}</div>`);
         }
         if (s.toolStatus === 'running') {
-          out.push(`<div class="activity-item"><strong>${s.batch_id} / suspiciousTransactions</strong><br>${s.toolActivity || 'Writing suspicious records'}</div>`);
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / suspiciousTransactions Tool</strong><br>${s.toolActivity || 'Writing suspicious records'}</div>`);
         }
         return out;
       });
@@ -728,8 +728,8 @@
       const batch = payload?.batch_id ? ` [${payload.batch_id}]` : '';
       if (type === 'agent_call_started') return `${payload.agent}${batch} started`;
       if (type === 'agent_call_finished') return `${payload.agent}${batch} ${payload.error ? `failed: ${payload.error}` : 'finished'}`;
-      if (type === 'tool_call_started') return `${payload.tool}${batch} started (${payload.record_count || 0} records)`;
-      if (type === 'tool_call_finished') return `${payload.tool}${batch} finished (written ${payload.written || 0})`;
+      if (type === 'tool_call_started') return `${payload.tool_label || payload.tool}${batch} started (${payload.record_count || 0} records)`;
+      if (type === 'tool_call_finished') return `${payload.tool_label || payload.tool}${batch} finished (written ${payload.written || 0})`;
       if (type === 'batch_started') return `batch started${batch}`;
       if (type === 'batch_finished') return `batch finished${batch}${payload.failed ? ' (failed)' : ''}`;
       if (type === 'batch_failed') return `batch failed${batch}: ${payload.error || 'unknown error'}`;

@@ -12,7 +12,7 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-5.4";
 function createSignalMinerAgent() {
   return new Agent({
     model: MODEL,
-    name: "SignalMiner",
+    name: "SignalMinerAgent",
     instructions: `You are a fraud detection specialist (Signal Miner).
 Always call the analyze_transaction_patterns tool exactly once with analysis_type="broad_detection".
 Then return ONLY JSON: {"candidates":[{"id":"...","reason":"..."}]}.`,
@@ -23,7 +23,7 @@ Then return ONLY JSON: {"candidates":[{"id":"...","reason":"..."}]}.`,
 function createEvidenceAuditorAgent() {
   return new Agent({
     model: MODEL,
-    name: "EvidenceAuditor",
+    name: "EvidenceAuditorAgent",
     instructions: `You are a fraud detection specialist (Evidence Auditor).
 Always call the analyze_transaction_patterns tool exactly once with analysis_type="precision_validation".
 Then return ONLY JSON: {"confirmed":[{"id":"...","reason":"..."}]}.`,
@@ -35,7 +35,7 @@ async function signalMinerAgent(batch, batchId, eventEmitter) {
   try {
     eventEmitter.emit("agent_call_started", {
       timestamp: new Date(),
-      agent: "Signal Miner",
+      agent: "Signal Miner Agent",
       batch_id: batchId,
       batch_size: batch.length,
       activity: "Analyzing full batch for broad fraud candidates",
@@ -51,7 +51,7 @@ Transactions:\n${JSON.stringify(batch, null, 2)}`;
 
     eventEmitter.emit("agent_call_finished", {
       timestamp: new Date(),
-      agent: "Signal Miner",
+      agent: "Signal Miner Agent",
       batch_id: batchId,
       candidates: candidates.length,
       result: candidates,
@@ -62,7 +62,7 @@ Transactions:\n${JSON.stringify(batch, null, 2)}`;
   } catch (error) {
     console.error("SignalMiner error:", error.message);
     eventEmitter.emit("agent_call_finished", {
-      agent: "Signal Miner",
+      agent: "Signal Miner Agent",
       batch_id: batchId,
       error: error.message,
       using_fallback: true,
@@ -75,7 +75,7 @@ async function evidenceAuditorAgent(batch, candidates, batchId, eventEmitter) {
   try {
     eventEmitter.emit("agent_call_started", {
       timestamp: new Date(),
-      agent: "Evidence Auditor",
+      agent: "Evidence Auditor Agent",
       batch_id: batchId,
       candidates_to_verify: candidates.length,
       activity: "Validating candidates with strict fraud criteria",
@@ -93,7 +93,7 @@ Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
 
     eventEmitter.emit("agent_call_finished", {
       timestamp: new Date(),
-      agent: "Evidence Auditor",
+      agent: "Evidence Auditor Agent",
       batch_id: batchId,
       confirmed: confirmed.length,
       result: confirmed,
@@ -104,7 +104,7 @@ Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
   } catch (error) {
     console.error("EvidenceAuditor error:", error.message);
     eventEmitter.emit("agent_call_finished", {
-      agent: "Evidence Auditor",
+      agent: "Evidence Auditor Agent",
       batch_id: batchId,
       error: error.message,
       using_fallback: true,
