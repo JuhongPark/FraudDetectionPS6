@@ -7,7 +7,12 @@ const {
   riskScorerAgent,
   evidenceAuditorAgent,
 } = require("../agents/fraudDetectionAgents");
-const { writeSuspiciousTransactions, streamUiEvent } = require("../tools/tools");
+const {
+  writeSuspiciousTransactions,
+  streamUiEvent,
+  runBatchIntegrityAudit,
+  runDecisionExplainability,
+} = require("../tools/tools");
 
 function chunkTransactions(transactions, batchSize = 20) {
   const batches = [];
@@ -28,6 +33,8 @@ class FraudPipeline {
     this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
     this.writeSuspicious = deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
     this.uiEventStream = deps.streamUiEvent || streamUiEvent;
+    this.batchIntegrityAudit = deps.batchIntegrityAuditTool || runBatchIntegrityAudit;
+    this.decisionExplainability = deps.decisionExplainabilityTool || runDecisionExplainability;
   }
 
   on(event, listener) {
@@ -154,6 +161,57 @@ class FraudPipeline {
         batchId,
         this.eventEmitter
       );
+
+      this.eventEmitter.emit("tool_call_started", {
+        batch_id: batchId,
+        tool: "batchIntegrityAuditTool",
+        tool_label: "batchIntegrityAuditTool Tool",
+        activity: "Auditing batch lineage consistency",
+      });
+      const auditResult = await this.batchIntegrityAudit({
+        batch,
+        candidates,
+        profiled,
+        scored,
+        confirmed,
+      });
+      this.eventEmitter.emit("tool_call_finished", {
+        batch_id: batchId,
+        tool: "batchIntegrityAuditTool",
+        tool_label: "batchIntegrityAuditTool Tool",
+        chain_consistent: auditResult?.audit?.chain_consistent === true,
+        activity: "Batch lineage audit completed",
+      });
+      this.eventEmitter.emit("tool_executed", {
+        batch_id: batchId,
+        tool: "batchIntegrityAuditTool",
+        tool_label: "batchIntegrityAuditTool Tool",
+      });
+
+      this.eventEmitter.emit("tool_call_started", {
+        batch_id: batchId,
+        tool: "decisionExplainabilityTool",
+        tool_label: "decisionExplainabilityTool Tool",
+        activity: "Generating compact decision explanations",
+      });
+      const explainResult = await this.decisionExplainability({
+        confirmed,
+        scored,
+      });
+      this.eventEmitter.emit("tool_call_finished", {
+        batch_id: batchId,
+        tool: "decisionExplainabilityTool",
+        tool_label: "decisionExplainabilityTool Tool",
+        explanation_count: Array.isArray(explainResult?.explanations)
+          ? explainResult.explanations.length
+          : 0,
+        activity: "Decision explanations generated",
+      });
+      this.eventEmitter.emit("tool_executed", {
+        batch_id: batchId,
+        tool: "decisionExplainabilityTool",
+        tool_label: "decisionExplainabilityTool Tool",
+      });
 
       // Emit suspicious transactions via Tool (always, even when empty)
       this.eventEmitter.emit("tool_call_started", {

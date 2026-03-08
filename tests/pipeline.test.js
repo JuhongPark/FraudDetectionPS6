@@ -42,6 +42,8 @@ test('pipeline processes 100 records into 5 parallel batches and writes suspicio
     batch_finished: 0,
     suspicious_tool_call_finished: 0,
     ui_stream_tool_call_finished: 0,
+    audit_tool_call_finished: 0,
+    explain_tool_call_finished: 0,
   };
   pipeline.on('batch_started', () => { events.batch_started += 1; });
   pipeline.on('batch_finished', () => { events.batch_finished += 1; });
@@ -51,6 +53,12 @@ test('pipeline processes 100 records into 5 parallel batches and writes suspicio
     }
     if (event.tool === 'ui_event_stream') {
       events.ui_stream_tool_call_finished += 1;
+    }
+    if (event.tool === 'batchIntegrityAuditTool') {
+      events.audit_tool_call_finished += 1;
+    }
+    if (event.tool === 'decisionExplainabilityTool') {
+      events.explain_tool_call_finished += 1;
     }
   });
 
@@ -63,6 +71,8 @@ test('pipeline processes 100 records into 5 parallel batches and writes suspicio
   assert.equal(events.batch_finished, 5);
   assert.equal(events.suspicious_tool_call_finished, 5);
   assert.equal(events.ui_stream_tool_call_finished, 5);
+  assert.equal(events.audit_tool_call_finished, 5);
+  assert.equal(events.explain_tool_call_finished, 5);
   assert.equal(suspicious.length, 5);
 });
 
@@ -98,6 +108,8 @@ test('pipeline still executes all tools even when no suspicious records are conf
   const events = {
     suspicious_tool_call_finished: 0,
     ui_stream_tool_call_finished: 0,
+    audit_tool_call_finished: 0,
+    explain_tool_call_finished: 0,
   };
   pipeline.on('tool_call_finished', (event) => {
     if (event.tool === 'suspiciousTransactions') {
@@ -105,6 +117,12 @@ test('pipeline still executes all tools even when no suspicious records are conf
     }
     if (event.tool === 'ui_event_stream') {
       events.ui_stream_tool_call_finished += 1;
+    }
+    if (event.tool === 'batchIntegrityAuditTool') {
+      events.audit_tool_call_finished += 1;
+    }
+    if (event.tool === 'decisionExplainabilityTool') {
+      events.explain_tool_call_finished += 1;
     }
   });
 
@@ -116,5 +134,7 @@ test('pipeline still executes all tools even when no suspicious records are conf
   assert.equal(result.suspicious_count, 0);
   assert.equal(events.suspicious_tool_call_finished, 5);
   assert.equal(events.ui_stream_tool_call_finished, 5);
+  assert.equal(events.audit_tool_call_finished, 5);
+  assert.equal(events.explain_tool_call_finished, 5);
   assert.equal(suspicious.length, 0);
 });

@@ -21,6 +21,8 @@ Uses @openai/agents framework Tool system with OpenAI API backend.
 | analyze_transaction_patterns | `src/tools/tools.js` | Pattern analysis for fraud detection | SignalMiner, EvidenceAuditor | transactions[], analysis_type | candidates[] \| confirmed[] | agent_call_started, agent_call_finished | active |
 | geoVelocityCheckTool | `src/tools/tools.js` | Add geo/channel anomaly signals to candidates | PatternProfiler | batch[], candidates[] | profiled[] | agent_call_started, agent_call_finished | active |
 | riskScoreTool | `src/tools/tools.js` | Compute candidate risk score and priority | RiskScorer | profiled[] | scored[] | agent_call_started, agent_call_finished | active |
+| batchIntegrityAuditTool | `src/tools/tools.js` | Audit lineage consistency across pipeline stages | fraudPipeline.processBatch() | batch[], candidates[], profiled[], scored[], confirmed[] | audit{} | tool_call_started, tool_call_finished, tool_executed | active |
+| decisionExplainabilityTool | `src/tools/tools.js` | Build compact explanation rows for confirmed decisions | fraudPipeline.processBatch() | confirmed[], scored[] | explanations[] | tool_call_started, tool_call_finished, tool_executed | active |
 | suspiciousTransactions | `src/tools/tools.js` | Persist suspicious transactions to file | fraudPipeline.processBatch() | transactions[] | {written, total} | tool_call_started, tool_call_finished, tool_executed | active |
 | ui_event_stream | `src/tools/tools.js` | Stream events to UI dashboard | EventEmitter | event_type, payload | {status, event} | Various events | active |
 
@@ -102,6 +104,8 @@ FraudPipeline.run()
       │   └─> riskScoreTool()
       ├─> evidenceAuditorAgent()
       │   └─> analyze_transaction_patterns(strict)
+      ├─> batchIntegrityAuditTool()
+      ├─> decisionExplainabilityTool()
       └─> suspiciousTransactionsTool.fn()
           └─> [WRITE] data/suspiciousTransactions.json
 ```

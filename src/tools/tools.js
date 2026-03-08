@@ -100,6 +100,50 @@ async function runRiskScore(input) {
   return { scored };
 }
 
+async function runBatchIntegrityAudit(input) {
+  const { batch, candidates, profiled, scored, confirmed } = input;
+  const batchIds = new Set((batch || []).map((t) => t.id));
+  const candidateIds = new Set((candidates || []).map((t) => t.id));
+  const profiledIds = new Set((profiled || []).map((t) => t.id));
+  const scoredIds = new Set((scored || []).map((t) => t.id));
+  const confirmedIds = new Set((confirmed || []).map((t) => t.id));
+
+  const subset = (small, large) => Array.from(small).every((id) => large.has(id));
+  const chainOk =
+    subset(candidateIds, batchIds) &&
+    subset(profiledIds, candidateIds) &&
+    subset(scoredIds, profiledIds) &&
+    subset(confirmedIds, scoredIds);
+
+  return {
+    audit: {
+      batch_count: batchIds.size,
+      candidate_count: candidateIds.size,
+      profiled_count: profiledIds.size,
+      scored_count: scoredIds.size,
+      confirmed_count: confirmedIds.size,
+      chain_consistent: chainOk,
+    },
+  };
+}
+
+async function runDecisionExplainability(input) {
+  const { confirmed, scored } = input;
+  const scoreMap = new Map((scored || []).map((r) => [r.id, r]));
+  const explanations = (confirmed || []).map((item) => {
+    const scoreRow = scoreMap.get(item.id) || {};
+    const score = Number(scoreRow.risk_score || 0);
+    const priority = scoreRow.priority || "low";
+    return {
+      id: item.id,
+      priority,
+      risk_score: score,
+      explanation: `${item.reason || "confirmed by rules"}; priority=${priority}; score=${score}`,
+    };
+  });
+  return { explanations };
+}
+
 const analyzeTransactionPatternsTool = tool({
   name: "analyze_transaction_patterns",
   description: "Analyze transaction data to find suspicious patterns and return candidates",
@@ -214,6 +258,41 @@ const riskScoreTool = tool({
   execute: runRiskScore,
 });
 
+const batchIntegrityAuditTool = tool({
+  name: "batchIntegrityAuditTool",
+  description: "Audit ID lineage and count consistency across batch processing stages",
+  parameters: {
+    type: "object",
+    properties: {
+      batch: { type: "array", items: { type: "object" } },
+      candidates: { type: "array", items: { type: "object" } },
+      profiled: { type: "array", items: { type: "object" } },
+      scored: { type: "array", items: { type: "object" } },
+      confirmed: { type: "array", items: { type: "object" } },
+    },
+    required: ["batch", "candidates", "profiled", "scored", "confirmed"],
+    additionalProperties: false,
+  },
+  strict: false,
+  execute: runBatchIntegrityAudit,
+});
+
+const decisionExplainabilityTool = tool({
+  name: "decisionExplainabilityTool",
+  description: "Generate compact explanations for confirmed suspicious decisions",
+  parameters: {
+    type: "object",
+    properties: {
+      confirmed: { type: "array", items: { type: "object" } },
+      scored: { type: "array", items: { type: "object" } },
+    },
+    required: ["confirmed", "scored"],
+    additionalProperties: false,
+  },
+  strict: false,
+  execute: runDecisionExplainability,
+});
+
 function findBroadCandidates(transactions) {
   const candidates = [];
 
@@ -284,9 +363,13 @@ module.exports = {
   streamUiEvent,
   runGeoVelocityCheck,
   runRiskScore,
+  runBatchIntegrityAudit,
+  runDecisionExplainability,
   analyzeTransactionPatternsTool,
   suspiciousTransactionsTool,
   uiEventStreamTool,
   geoVelocityCheckTool,
   riskScoreTool,
+  batchIntegrityAuditTool,
+  decisionExplainabilityTool,
 };

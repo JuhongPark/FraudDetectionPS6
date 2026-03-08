@@ -817,7 +817,16 @@
         if (payload.source === 'agent_sdk') {
           return `Tool ${payload.tool_label || payload.tool}${batch} finished for ${payload.agent || 'Agent'}`;
         }
-        return `${payload.tool_label || payload.tool}${batch} finished (written ${payload.written || 0})`;
+        if (typeof payload.written === 'number') {
+          return `${payload.tool_label || payload.tool}${batch} finished (written ${payload.written || 0})`;
+        }
+        if (typeof payload.explanation_count === 'number') {
+          return `${payload.tool_label || payload.tool}${batch} finished (${payload.explanation_count} explanations)`;
+        }
+        if (typeof payload.chain_consistent === 'boolean') {
+          return `${payload.tool_label || payload.tool}${batch} finished (chain ${payload.chain_consistent ? 'ok' : 'mismatch'})`;
+        }
+        return `${payload.tool_label || payload.tool}${batch} finished`;
       }
       if (type === 'batch_started') return `batch started${batch}`;
       if (type === 'batch_finished') return `batch finished${batch}${payload.failed ? ' (failed)' : ''}`;
