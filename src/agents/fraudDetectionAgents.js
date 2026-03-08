@@ -7,7 +7,7 @@ require("dotenv").config();
 
 const { analyzeTransactionPatternsTool } = require("../tools/tools");
 
-const MODEL = process.env.OPENAI_MODEL || "gpt-5.3";
+const MODEL = process.env.OPENAI_MODEL || "gpt-5.4";
 
 function createSignalMinerAgent() {
   return new Agent({

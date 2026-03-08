@@ -104,9 +104,9 @@ Status: ✅ Tool calls properly instrumented
 
 | Item | 이전 | 현재 | 상태 |
 | --- | --- | --- | --- |
-| Model ID | gpt-5.3 (invalid) | gpt-4-turbo | ✅ Valid |
+| Model ID | legacy setting | gpt-5.4 | ✅ Valid |
 | Default | hardcoded | OPENAI_MODEL env var | ✅ Configurable |
-| Fallback | N/A | gpt-4-turbo | ✅ Safe |
+| Fallback | N/A | gpt-5.4 | ✅ Safe |
 
 ---
 
@@ -147,7 +147,7 @@ Status: ✅ Tool calls properly instrumented
 ### Modified Files
 1. `src/agents/fraudDetectionAgents.js` - Agent class integration
 2. `src/pipeline/fraudPipeline.js` - Tool execution tracking
-3. `.env.example` - Updated model to gpt-4-turbo
+3. `.env.example` - Updated model to gpt-5.4
 4. `docs/registry/AGENT_REGISTRY.md` - JavaScript/Framework documentation
 5. `docs/registry/TOOLCALL_REGISTRY.md` - Tool definitions & call graph
 

@@ -7,7 +7,7 @@ Using @openai/agents framework with OpenAI chat API backend.
 - **Runtime**: Node.js (JavaScript/CommonJS)
 - **Framework**: @openai/agents@0.5.4
 - **API**: @openai/agents `run()` orchestration
-- **Model**: gpt-5.3 (configurable via OPENAI_MODEL env var)
+- **Model**: gpt-5.4 (configurable via OPENAI_MODEL env var)
 
 ## Rules
 - Keep only agent entries in this file.
@@ -27,7 +27,7 @@ Using @openai/agents framework with OpenAI chat API backend.
 ### SignalMiner
 ```javascript
 const agent = new Agent({
-  model: "gpt-5.3",
+  model: "gpt-5.4",
   name: "SignalMiner",
   instructions: "Identify ANY suspicious transaction patterns...",
   tools: [analyzeTransactionPatternsTool]
@@ -44,7 +44,7 @@ const agent = new Agent({
 ### EvidenceAuditor
 ```javascript
 const agent = new Agent({
-  model: "gpt-5.3",
+  model: "gpt-5.4",
   name: "EvidenceAuditor",
   instructions: "Verify suspended transactions with strong evidence...",
   tools: [analyzeTransactionPatternsTool]

@@ -22,7 +22,7 @@
 ```javascript
 // ❌ 직접 OpenAI API 호출
 const response = await client.chat.completions.create({
-  model: process.env.OPENAI_MODEL || "gpt-5.3",
+  model: process.env.OPENAI_MODEL || "gpt-5.4",
   messages: [{ role: "user", content: prompt }]
 });
 ```
@@ -32,7 +32,7 @@ const response = await client.chat.completions.create({
 // ✅ @openai/agents 사용
 const agent = new Agent({
   name: "SignalMiner",
-  model: "gpt-5.3",
+  model: "gpt-5.4",
   tools: [analyzeTransactionsPatternsTool]
 });
 const result = await agent.execute(prompt);
