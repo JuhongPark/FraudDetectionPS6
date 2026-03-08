@@ -33,7 +33,7 @@ pipeline.on("pipeline_started", (data) => {
   appState.events.push({
     id: appState.events.length,
     ts: Date.now() / 1000,
-    type: "batch_started",
+    type: "pipeline_started",
     payload: { batch_id: "pipeline", ...data },
   });
 });
@@ -83,6 +83,33 @@ pipeline.on("batch_finished", (data) => {
   });
 });
 
+pipeline.on("tool_call_started", (data) => {
+  appState.events.push({
+    id: appState.events.length,
+    ts: Date.now() / 1000,
+    type: "tool_call_started",
+    payload: data,
+  });
+});
+
+pipeline.on("tool_call_finished", (data) => {
+  appState.events.push({
+    id: appState.events.length,
+    ts: Date.now() / 1000,
+    type: "tool_call_finished",
+    payload: data,
+  });
+});
+
+pipeline.on("tool_executed", (data) => {
+  appState.events.push({
+    id: appState.events.length,
+    ts: Date.now() / 1000,
+    type: "tool_executed",
+    payload: data,
+  });
+});
+
 pipeline.on("pipeline_finished", (data) => {
   appState.events.push({
     id: appState.events.length,
@@ -122,7 +149,7 @@ app.get("/api/status", (req, res) => {
       e.type.startsWith("agent_call_")
     ),
     batch_events: appState.events.filter((e) => e.type.startsWith("batch_")),
-    tool_events: [],
+    tool_events: appState.events.filter((e) => e.type.startsWith("tool_")),
     suspicious: suspicious,
     last_result: appState.lastResult,
   });

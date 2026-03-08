@@ -537,20 +537,20 @@
       } else if (type === 'batch_finished') {
         state.status = 'completed';
       } else if (type === 'agent_call_started') {
-        if (payload.agent === 'Signal Miner') {
+        if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = 'running';
-        } else if (payload.agent === 'Evidence Auditor') {
+        } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = 'running';
         }
       } else if (type === 'agent_call_finished') {
-        if (payload.agent === 'Signal Miner') {
+        if (payload.agent === 'Signal Miner' || payload.agent === 'SignalMiner') {
           state.signalMinerStatus = 'completed';
           state.candidates = payload.candidates || 0;
-        } else if (payload.agent === 'Evidence Auditor') {
+        } else if (payload.agent === 'Evidence Auditor' || payload.agent === 'EvidenceAuditor') {
           state.auditorStatus = 'completed';
           state.confirmed = payload.confirmed || 0;
         }
-      } else if (type === 'tool_call_finished') {
+      } else if (type === 'tool_call_finished' || type === 'tool_executed') {
         if (payload.tool === 'suspiciousTransactions') {
           state.toolStatus = true;
           state.written = payload.written || 0;

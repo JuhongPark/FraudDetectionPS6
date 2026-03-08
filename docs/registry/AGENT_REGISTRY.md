@@ -6,7 +6,7 @@ Using @openai/agents framework with OpenAI chat API backend.
 ## Technology Stack
 - **Runtime**: Node.js (JavaScript/CommonJS)
 - **Framework**: @openai/agents@0.5.4
-- **API**: OpenAI chat.completions
+- **API**: @openai/agents `run()` orchestration
 - **Model**: gpt-5.3 (configurable via OPENAI_MODEL env var)
 
 ## Rules

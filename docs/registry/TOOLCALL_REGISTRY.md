@@ -19,7 +19,7 @@ Uses @openai/agents framework Tool system with OpenAI API backend.
 | Tool Name | Location | Purpose | Called By | Input Schema | Output Schema | Telemetry Events | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | analyze_transaction_patterns | `src/tools/tools.js` | Pattern analysis for fraud detection | SignalMiner, EvidenceAuditor | transactions[], analysis_type | candidates[] \| confirmed[] | agent_call_started, agent_call_finished | active |
-| suspiciousTransactions | `src/tools/tools.js` | Persist suspicious transactions to file | fraudPipeline.processBatch() | transactions[] | {written, total} | tool_executed | active |
+| suspiciousTransactions | `src/tools/tools.js` | Persist suspicious transactions to file | fraudPipeline.processBatch() | transactions[] | {written, total} | tool_call_started, tool_call_finished, tool_executed | active |
 | ui_event_stream | `src/tools/tools.js` | Stream events to UI dashboard | EventEmitter | event_type, payload | {status, event} | Various events | active |
 
 ## Tool Definitions
@@ -64,7 +64,7 @@ Uses @openai/agents framework Tool system with OpenAI API backend.
 - **Outputs**: {tool, written, total}
 - **Called By**: fraudPipeline.processBatch()
 - **File**: `data/suspiciousTransactions.json` (deduplicated)
-- **Events**: tool_executed
+- **Events**: tool_call_started, tool_call_finished, tool_executed
 
 ### ui_event_stream
 ```javascript

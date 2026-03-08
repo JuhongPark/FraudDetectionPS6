@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
 const { signalMinerAgent, evidenceAuditorAgent } = require("../agents/fraudDetectionAgents");
-const { suspiciousTransactionsTool } = require("../tools/tools");
+const { writeSuspiciousTransactions } = require("../tools/tools");
 
 function chunkTransactions(transactions, batchSize = 20) {
   const batches = [];
@@ -54,12 +54,6 @@ class FraudPipeline {
       confirmedAll.push(...batchResults);
     });
 
-    // Write suspicious transactions
-    fs.writeFileSync(
-      this.config.suspiciousFile,
-      JSON.stringify(confirmedAll, null, 2)
-    );
-
     this.eventEmitter.emit("pipeline_finished", {
       total_transactions: transactions.length,
       batch_count: batches.length,
@@ -107,14 +101,23 @@ class FraudPipeline {
 
       // Emit suspicious transactions via Tool
       if (confirmed.length > 0) {
-        const toolResult = await suspiciousTransactionsTool.fn(
-          { transactions: confirmed },
-          this.eventEmitter
-        );
-        
-        this.eventEmitter.emit("tool_executed", {
+        this.eventEmitter.emit("tool_call_started", {
           batch_id: batchId,
           tool: "suspiciousTransactions",
+          record_count: confirmed.length,
+        });
+
+        const toolResult = await writeSuspiciousTransactions({ transactions: confirmed });
+
+        this.eventEmitter.emit("tool_call_finished", {
+          batch_id: batchId,
+          tool: toolResult.tool,
+          written: toolResult.written,
+          total: toolResult.total
+        });
+        this.eventEmitter.emit("tool_executed", {
+          batch_id: batchId,
+          tool: toolResult.tool,
           written: toolResult.written,
           total: toolResult.total
         });

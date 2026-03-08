@@ -3,11 +3,54 @@
  * Using @openai/agents framework
  */
 
-// Tool for analyzing transaction patterns
-const analyzeTransactionPatternsTool = {
+const fs = require("fs");
+const path = require("path");
+const { tool } = require("@openai/agents");
+
+async function analyzeTransactionPatterns(input) {
+  const { transactions, analysis_type } = input;
+
+  if (analysis_type === "broad_detection") {
+    return findBroadCandidates(transactions);
+  }
+  if (analysis_type === "precision_validation") {
+    return validateStrictly(transactions);
+  }
+  return { candidates: [] };
+}
+
+async function writeSuspiciousTransactions(input) {
+  const { transactions } = input;
+  const suspiciousFile = path.join(__dirname, "../../data/suspiciousTransactions.json");
+
+  const existing = fs.existsSync(suspiciousFile)
+    ? JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"))
+    : [];
+
+  const all = [...existing, ...transactions];
+  const deduped = Array.from(new Map(all.map((t) => [t.id, t])).values());
+
+  fs.writeFileSync(suspiciousFile, JSON.stringify(deduped, null, 2));
+
+  return {
+    tool: "suspiciousTransactions",
+    written: transactions.length,
+    total: deduped.length,
+  };
+}
+
+async function streamUiEvent(input, eventEmitter) {
+  const { event_type, payload } = input;
+  if (eventEmitter) {
+    eventEmitter.emit(event_type, payload);
+  }
+  return { status: "ok", event: event_type };
+}
+
+const analyzeTransactionPatternsTool = tool({
   name: "analyze_transaction_patterns",
   description: "Analyze transaction data to find suspicious patterns and return candidates",
-  input_schema: {
+  parameters: {
     type: "object",
     properties: {
       transactions: {
@@ -19,38 +62,26 @@ const analyzeTransactionPatternsTool = {
             amount: { type: "number" },
             merchant: { type: "string" },
             location: { type: "string" },
-            channel: { type: "string" }
-          }
+            channel: { type: "string" },
+          },
         },
-        description: "List of transactions to analyze",
       },
       analysis_type: {
         type: "string",
         enum: ["broad_detection", "precision_validation"],
-        description: "Type of analysis: broad (Signal Miner) or strict (Evidence Auditor)",
       },
     },
     required: ["transactions", "analysis_type"],
+    additionalProperties: false,
   },
-  fn: async (input) => {
-    const { transactions, analysis_type } = input;
-    
-    if (analysis_type === "broad_detection") {
-      // Signal Miner: broad detection
-      return findBroadCandidates(transactions);
-    } else if (analysis_type === "precision_validation") {
-      // Evidence Auditor: strict validation
-      return validateStrictly(transactions);
-    }
-    return { candidates: [] };
-  }
-};
+  strict: false,
+  execute: analyzeTransactionPatterns,
+});
 
-// Tool for writing suspicious transactions
-const suspiciousTransactionsTool = {
-  name: "suspicious_transactions",
+const suspiciousTransactionsTool = tool({
+  name: "suspiciousTransactions",
   description: "Store and persist suspicious transactions",
-  input_schema: {
+  parameters: {
     type: "object",
     properties: {
       transactions: {
@@ -59,67 +90,37 @@ const suspiciousTransactionsTool = {
           type: "object",
           properties: {
             id: { type: "string" },
-            reason: { type: "string" }
-          }
+            reason: { type: "string" },
+          },
         },
-        description: "List of suspicious transactions to store",
       },
     },
     required: ["transactions"],
+    additionalProperties: false,
   },
-  fn: async (input) => {
-    const { transactions } = input;
-    const fs = require("fs");
-    const path = require("path");
-    
-    const suspiciousFile = path.join(__dirname, "../../data/suspiciousTransactions.json");
-    const existing = JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"));
-    
-    // Merge and deduplicate
-    const all = [...existing, ...transactions];
-    const deduped = Array.from(new Map(all.map(t => [t.id, t])).values());
-    
-    fs.writeFileSync(suspiciousFile, JSON.stringify(deduped, null, 2));
-    
-    return {
-      tool: "suspiciousTransactions",
-      written: transactions.length,
-      total: deduped.length
-    };
-  }
-};
+  strict: false,
+  execute: writeSuspiciousTransactions,
+});
 
-// Tool for UI event streaming
-const uiEventStreamTool = {
+const uiEventStreamTool = tool({
   name: "ui_event_stream",
   description: "Stream events to the monitoring UI",
-  input_schema: {
+  parameters: {
     type: "object",
     properties: {
-      event_type: {
-        type: "string",
-        description: "Type of event (batch_started, suspicious_found, etc)"
-      },
-      payload: {
-        type: "object",
-        description: "Event payload"
-      }
+      event_type: { type: "string" },
+      payload: { type: "object" },
     },
     required: ["event_type", "payload"],
+    additionalProperties: false,
   },
-  fn: async (input, eventEmitter) => {
-    const { event_type, payload } = input;
-    if (eventEmitter) {
-      eventEmitter.emit(event_type, payload);
-    }
-    return { status: "ok", event: event_type };
-  }
-};
+  strict: false,
+  execute: async (input) => streamUiEvent(input),
+});
 
-// Helper functions
 function findBroadCandidates(transactions) {
   const candidates = [];
-  
+
   for (const txn of transactions) {
     const reasons = [];
     const amount = parseFloat(txn.amount);
@@ -128,31 +129,34 @@ function findBroadCandidates(transactions) {
     const channel = String(txn.channel).toLowerCase();
 
     if (amount >= 3000) reasons.push(`high amount (${amount.toFixed(2)})`);
-    if (["crypto", "luxury", "exchange", "gift"].some(k => merchant.includes(k)))
+    if (["crypto", "luxury", "exchange", "gift"].some((k) => merchant.includes(k))) {
       reasons.push(`high-risk merchant (${txn.merchant})`);
-    if (["unknown", "vpn", "lagos", "offshore"].some(k => location.includes(k)))
+    }
+    if (["unknown", "vpn", "lagos", "offshore"].some((k) => location.includes(k))) {
       reasons.push(`risky location (${txn.location})`);
-    if (["card_not_present", "online_transfer"].includes(channel) && amount >= 1200)
+    }
+    if (["card_not_present", "online_transfer"].includes(channel) && amount >= 1200) {
       reasons.push(`high-risk channel (${channel}) with elevated amount`);
+    }
 
     if (reasons.length > 0) {
       candidates.push({ id: txn.id, reason: reasons.join("; ") });
     }
   }
-  
+
   return { candidates };
 }
 
 function validateStrictly(candidates) {
   const confirmed = [];
-  
+
   for (const candidate of candidates) {
     const reason = validateCandidate(candidate);
     if (reason) {
       confirmed.push({ id: candidate.id, reason });
     }
   }
-  
+
   return { confirmed };
 }
 
@@ -164,25 +168,25 @@ function validateCandidate(txn) {
 
   if (amount >= 7000) {
     return `confirmed: very high amount (${amount.toFixed(2)})`;
-  } else if (merchant.includes("crypto") && amount >= 2000) {
+  }
+  if (merchant.includes("crypto") && amount >= 2000) {
     return `confirmed: crypto merchant + high amount (${amount.toFixed(2)})`;
-  } else if (
-    merchant.includes("luxury") &&
-    (location.includes("lagos") || location.includes("unknown"))
-  ) {
+  }
+  if (merchant.includes("luxury") && (location.includes("lagos") || location.includes("unknown"))) {
     return "confirmed: luxury + unusual location";
-  } else if (
-    ["card_not_present", "online_transfer"].includes(channel) &&
-    amount >= 3500
-  ) {
+  }
+  if (["card_not_present", "online_transfer"].includes(channel) && amount >= 3500) {
     return "confirmed: high-risk channel with large amount";
   }
-  
+
   return null;
 }
 
 module.exports = {
+  analyzeTransactionPatterns,
+  writeSuspiciousTransactions,
+  streamUiEvent,
   analyzeTransactionPatternsTool,
   suspiciousTransactionsTool,
-  uiEventStreamTool
+  uiEventStreamTool,
 };
