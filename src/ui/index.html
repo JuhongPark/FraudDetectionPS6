@@ -647,6 +647,17 @@
               ${state.toolStatus === 'running' ? `<div class="tool-stat"><span class="tool-stat-label">Activity:</span><span class="tool-stat-value">${state.toolActivity || 'writing...'}</span></div>` : ''}
             </div>
           ` : ''}
+          ${Object.keys(state.activeAgentTools || {}).length ? `
+            <div class="tool-box running">
+              <div class="tool-header">Agent Tool calls (running)</div>
+              ${Object.values(state.activeAgentTools).map((t) => `
+                <div class="tool-stat">
+                  <span class="tool-stat-label">${t.agent || 'Agent'}:</span>
+                  <span class="tool-stat-value">${t.tool_label || t.tool || 'Tool'}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
           ${state.lastEventTime ? `<div class="meta-row">Last update: ${state.lastEventTime}</div>` : ''}
           ${state.error ? `<div class="error-note">${state.error}</div>` : ''}
         </div>
@@ -663,6 +674,7 @@
           riskScorerStatus: 'pending',
           auditorStatus: 'pending',
           toolStatus: 'pending',
+          activeAgentTools: {},
           candidates: 0,
           profiled: 0,
           scored: 0,
@@ -733,10 +745,22 @@
           if (payload.error) state.error = `Evidence Auditor: ${payload.error}`;
         }
       } else if (type === 'tool_call_started') {
-        state.toolStatus = 'running';
-        state.toolActivity = payload.activity || 'Persisting suspicious records';
+        if (payload.source === 'agent_sdk') {
+          const key = payload.call_id || `${payload.agent || 'agent'}:${payload.tool || payload.tool_label || 'tool'}`;
+          state.activeAgentTools[key] = {
+            agent: payload.agent || 'Agent',
+            tool: payload.tool || '',
+            tool_label: payload.tool_label || payload.tool || 'Tool'
+          };
+        } else {
+          state.toolStatus = 'running';
+          state.toolActivity = payload.activity || 'Persisting suspicious records';
+        }
       } else if (type === 'tool_call_finished' || type === 'tool_executed') {
-        if (payload.tool === 'suspiciousTransactions') {
+        if (payload.source === 'agent_sdk') {
+          const key = payload.call_id || `${payload.agent || 'agent'}:${payload.tool || payload.tool_label || 'tool'}`;
+          delete state.activeAgentTools[key];
+        } else if (payload.tool === 'suspiciousTransactions') {
           state.toolStatus = payload.error ? 'failed' : 'completed';
           state.written = payload.written || 0;
           state.total = payload.total || 0;
@@ -764,6 +788,9 @@
         if (s.toolStatus === 'running') {
           out.push(`<div class="activity-item"><strong>${s.batch_id} / suspiciousTransactions Tool</strong><br>${s.toolActivity || 'Writing suspicious records'}</div>`);
         }
+        Object.values(s.activeAgentTools || {}).forEach((t) => {
+          out.push(`<div class="activity-item"><strong>${s.batch_id} / ${t.agent || 'Agent'}</strong><br>${t.tool_label || t.tool || 'Tool'} running</div>`);
+        });
         return out;
       });
 
@@ -780,8 +807,18 @@
       const batch = payload?.batch_id ? ` [${payload.batch_id}]` : '';
       if (type === 'agent_call_started') return `${payload.agent}${batch} started`;
       if (type === 'agent_call_finished') return `${payload.agent}${batch} ${payload.error ? `failed: ${payload.error}` : 'finished'}`;
-      if (type === 'tool_call_started') return `${payload.tool_label || payload.tool}${batch} started (${payload.record_count || 0} records)`;
-      if (type === 'tool_call_finished') return `${payload.tool_label || payload.tool}${batch} finished (written ${payload.written || 0})`;
+      if (type === 'tool_call_started') {
+        if (payload.source === 'agent_sdk') {
+          return `Tool ${payload.tool_label || payload.tool}${batch} started by ${payload.agent || 'Agent'}`;
+        }
+        return `${payload.tool_label || payload.tool}${batch} started (${payload.record_count || 0} records)`;
+      }
+      if (type === 'tool_call_finished') {
+        if (payload.source === 'agent_sdk') {
+          return `Tool ${payload.tool_label || payload.tool}${batch} finished for ${payload.agent || 'Agent'}`;
+        }
+        return `${payload.tool_label || payload.tool}${batch} finished (written ${payload.written || 0})`;
+      }
       if (type === 'batch_started') return `batch started${batch}`;
       if (type === 'batch_finished') return `batch finished${batch}${payload.failed ? ' (failed)' : ''}`;
       if (type === 'batch_failed') return `batch failed${batch}: ${payload.error || 'unknown error'}`;

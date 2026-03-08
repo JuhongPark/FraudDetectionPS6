@@ -75,6 +75,7 @@ Use tool input: {"transactions": [...], "analysis_type": "broad_detection"}
 Transactions:\n${JSON.stringify(batch, null, 2)}`;
 
     const result = await run(agent, prompt);
+    emitAgentToolTelemetry(result, "Signal Miner Agent", batchId, eventEmitter);
     const candidates = extractRecords(result.finalOutput, batch, "candidates");
 
     eventEmitter.emit("agent_call_finished", {
@@ -117,6 +118,7 @@ Use tool input: {"transactions": [...], "analysis_type": "precision_validation"}
 Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
 
     const result = await run(agent, prompt);
+    emitAgentToolTelemetry(result, "Evidence Auditor Agent", batchId, eventEmitter);
     const confirmed = extractRecords(result.finalOutput, batch, "confirmed");
 
     eventEmitter.emit("agent_call_finished", {
@@ -157,6 +159,7 @@ Use tool input: {"batch":[...], "candidates":[...]}
 Batch:\n${JSON.stringify(batch, null, 2)}
 Candidates:\n${JSON.stringify(candidates, null, 2)}`;
     const result = await run(agent, prompt);
+    emitAgentToolTelemetry(result, "Pattern Profiler Agent", batchId, eventEmitter);
     const profiledFromLlm = extractArray(result.finalOutput, "profiled");
     const profiled = profiledFromLlm
       ? mergeById(candidates, profiledFromLlm)
@@ -196,6 +199,7 @@ async function riskScorerAgent(batch, profiled, batchId, eventEmitter) {
 Use tool input: {"profiled":[...]}
 Profiled:\n${JSON.stringify(profiled, null, 2)}`;
     const result = await run(agent, prompt);
+    emitAgentToolTelemetry(result, "Risk Scorer Agent", batchId, eventEmitter);
     const scoredFromLlm = extractArray(result.finalOutput, "scored");
     const scored = scoredFromLlm
       ? mergeById(profiled, scoredFromLlm)
@@ -331,6 +335,51 @@ function parseAgentResponse(content, batch) {
   return uniqueIds
     .filter((id) => batchIds.has(id))
     .map((id) => ({ id, reason: "LLM detected" }));
+}
+
+function emitAgentToolTelemetry(result, agentLabel, batchId, eventEmitter) {
+  if (!eventEmitter || !result || !Array.isArray(result.newItems)) return;
+  const pendingCallIdsByTool = new Map();
+
+  for (const item of result.newItems) {
+    if (!item || !item.type) continue;
+    const raw = item.rawItem || {};
+    const toolName = item.name || raw.name || raw.tool_name || "unknown_tool";
+    const toolLabel = `${toolName} Tool`;
+
+    if (item.type === "tool_call_item") {
+      const callId = item.callId || raw.call_id || raw.id || `${batchId}:${toolName}:start`;
+      const pending = pendingCallIdsByTool.get(toolName) || [];
+      pending.push(callId);
+      pendingCallIdsByTool.set(toolName, pending);
+      eventEmitter.emit("tool_call_started", {
+        timestamp: new Date(),
+        batch_id: batchId,
+        source: "agent_sdk",
+        agent: agentLabel,
+        tool: toolName,
+        tool_label: toolLabel,
+        call_id: callId,
+        activity: `${agentLabel} is calling ${toolLabel}`,
+      });
+    }
+
+    if (item.type === "tool_call_output_item") {
+      const pending = pendingCallIdsByTool.get(toolName) || [];
+      const callId = item.callId || raw.call_id || raw.id || pending.shift() || `${batchId}:${toolName}:done`;
+      pendingCallIdsByTool.set(toolName, pending);
+      eventEmitter.emit("tool_call_finished", {
+        timestamp: new Date(),
+        batch_id: batchId,
+        source: "agent_sdk",
+        agent: agentLabel,
+        tool: toolName,
+        tool_label: toolLabel,
+        call_id: callId,
+        activity: `${toolLabel} returned to ${agentLabel}`,
+      });
+    }
+  }
 }
 
 module.exports = {
