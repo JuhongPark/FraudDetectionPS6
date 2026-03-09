@@ -25,6 +25,7 @@ let appState = {
   running: false,
   events: [],
   lastResult: null,
+  lastError: null,
 };
 
 // Initialize pipeline
@@ -54,9 +55,15 @@ pipeline.on("batch_failed", (data) => pushEvent("batch_failed", data));
 pipeline.on("tool_call_started", (data) => pushEvent("tool_call_started", data));
 pipeline.on("tool_call_finished", (data) => pushEvent("tool_call_finished", data));
 pipeline.on("tool_executed", (data) => pushEvent("tool_executed", data));
+pipeline.on("pipeline_failed", (data) => {
+  pushEvent("pipeline_failed", data);
+  appState.running = false;
+  appState.lastError = data?.error || "Pipeline failed";
+});
 pipeline.on("pipeline_finished", (data) => {
   pushEvent("pipeline_finished", data);
   appState.running = false;
+  appState.lastError = null;
 });
 
 // Middleware
@@ -74,6 +81,7 @@ app.get("/api/status", (req, res) => {
   ).length;
   const failureCount = appState.events.filter(
     (e) =>
+      e.type === "pipeline_failed" ||
       e.type === "batch_failed" ||
       (e.type === "agent_call_finished" && e.payload && e.payload.error)
   ).length;
@@ -99,6 +107,7 @@ app.get("/api/status", (req, res) => {
     timeline_events: appState.events.slice(-150),
     suspicious: suspicious,
     last_result: appState.lastResult,
+    last_error: appState.lastError,
   });
 });
 
@@ -109,6 +118,8 @@ app.post("/api/run", async (req, res) => {
 
   appState.running = true;
   appState.events = [];
+  appState.lastResult = null;
+  appState.lastError = null;
 
   // Generate transactions
   const transactions = generateTransactions(100);
@@ -117,9 +128,17 @@ app.post("/api/run", async (req, res) => {
   res.json({ started: true });
 
   // Run pipeline asynchronously
-  pipeline.run().then((result) => {
-    appState.lastResult = result;
-  });
+  pipeline
+    .run()
+    .then((result) => {
+      appState.lastResult = result;
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      pushEvent("pipeline_failed", { error: message });
+      appState.running = false;
+      appState.lastError = message;
+    });
 });
 
 function startServer(initialPort) {

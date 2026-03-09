@@ -10,7 +10,13 @@ function httpGet(url) {
     http.get(url, (res) => {
       let body = "";
       res.on("data", (chunk) => (body += chunk));
-      res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+      res.on("end", () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(body) });
+        } catch (error) {
+          reject(new Error(`Failed to parse JSON from GET ${url}: ${String(error.message || error)} | body=${body.slice(0, 200)}`));
+        }
+      });
     }).on("error", reject);
   });
 }
@@ -20,10 +26,27 @@ function httpPost(url) {
     const req = http.request(url, { method: "POST", headers: { "Content-Type": "application/json" } }, (res) => {
       let body = "";
       res.on("data", (chunk) => (body += chunk));
-      res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+      res.on("end", () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(body) });
+        } catch (error) {
+          reject(new Error(`Failed to parse JSON from POST ${url}: ${String(error.message || error)} | body=${body.slice(0, 200)}`));
+        }
+      });
     });
     req.on("error", reject);
     req.end();
+  });
+}
+
+function canListenOnLoopback() {
+  return new Promise((resolve) => {
+    const probe = http.createServer();
+
+    probe.once("error", () => resolve(false));
+    probe.listen(0, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
+    });
   });
 }
 
@@ -42,7 +65,13 @@ function waitForCondition(fn, timeoutMs = 10000, intervalMs = 200) {
   });
 }
 
-test("server E2E: /api/run triggers pipeline and /api/status reports all events", async () => {
+test("server E2E: /api/run triggers pipeline and /api/status reports all events", async (t) => {
+  const listenAvailable = await canListenOnLoopback();
+  if (!listenAvailable) {
+    t.skip("Loopback listen is not permitted in this environment");
+    return;
+  }
+
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fraud-server-"));
   const inputFile = path.join(tmpDir, "input.json");
   const suspiciousFile = path.join(tmpDir, "suspicious.json");

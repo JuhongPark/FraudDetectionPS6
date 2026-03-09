@@ -8,7 +8,7 @@ const {
   evidenceAuditorAgent,
 } = require("../agents/fraudDetectionAgents");
 const {
-  suspiciousTransactionsTool,
+  writeSuspiciousTransactions,
   streamUiEvent,
   runBatchIntegrityAudit,
   runDecisionExplainability,
@@ -31,7 +31,8 @@ class FraudPipeline {
     this.patternProfiler = deps.patternProfilerAgent || patternProfilerAgent;
     this.riskScorer = deps.riskScorerAgent || riskScorerAgent;
     this.evidenceAuditor = deps.evidenceAuditorAgent || evidenceAuditorAgent;
-    this.writeSuspicious = deps.writeSuspiciousTransactions || (async (input) => suspiciousTransactionsTool.invoke(null, JSON.stringify(input), {}));
+    this.writeSuspicious =
+      deps.writeSuspiciousTransactions || writeSuspiciousTransactions;
     this.uiEventStream = deps.streamUiEvent || streamUiEvent;
     this.batchIntegrityAudit = deps.batchIntegrityAuditTool || runBatchIntegrityAudit;
     this.decisionExplainability = deps.decisionExplainabilityTool || runDecisionExplainability;
