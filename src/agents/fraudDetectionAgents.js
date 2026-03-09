@@ -14,6 +14,36 @@ const {
 } = require("../tools/tools");
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-5.4";
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
+async function runWithRetry(agent, prompt, retries = MAX_RETRIES) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await run(agent, prompt);
+    } catch (error) {
+      if (attempt < retries && isTransient(error)) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+function isTransient(error) {
+  const msg = String(error.message || "").toLowerCase();
+  return (
+    msg.includes("timeout") ||
+    msg.includes("rate limit") ||
+    msg.includes("429") ||
+    msg.includes("500") ||
+    msg.includes("502") ||
+    msg.includes("503") ||
+    msg.includes("econnreset") ||
+    msg.includes("econnrefused")
+  );
+}
 
 function createSignalMinerAgent() {
   return new Agent({
@@ -74,7 +104,7 @@ async function signalMinerAgent(batch, batchId, eventEmitter) {
 Use tool input: {"transactions": [...], "analysis_type": "broad_detection"}
 Transactions:\n${JSON.stringify(batch, null, 2)}`;
 
-    const result = await run(agent, prompt);
+    const result = await runWithRetry(agent, prompt);
     emitAgentToolTelemetry(result, "Signal Miner Agent", batchId, eventEmitter);
     const candidates = extractRecords(result.finalOutput, batch, "candidates");
 
@@ -117,7 +147,7 @@ async function evidenceAuditorAgent(batch, candidates, batchId, eventEmitter) {
 Use tool input: {"transactions": [...], "analysis_type": "precision_validation"}
 Transactions:\n${JSON.stringify(candidateTxns, null, 2)}`;
 
-    const result = await run(agent, prompt);
+    const result = await runWithRetry(agent, prompt);
     emitAgentToolTelemetry(result, "Evidence Auditor Agent", batchId, eventEmitter);
     const confirmed = extractRecords(result.finalOutput, batch, "confirmed");
 
@@ -158,7 +188,7 @@ async function patternProfilerAgent(batch, candidates, batchId, eventEmitter) {
 Use tool input: {"batch":[...], "candidates":[...]}
 Batch:\n${JSON.stringify(batch, null, 2)}
 Candidates:\n${JSON.stringify(candidates, null, 2)}`;
-    const result = await run(agent, prompt);
+    const result = await runWithRetry(agent, prompt);
     emitAgentToolTelemetry(result, "Pattern Profiler Agent", batchId, eventEmitter);
     const profiledFromLlm = extractArray(result.finalOutput, "profiled");
     const profiled = profiledFromLlm
@@ -198,7 +228,7 @@ async function riskScorerAgent(batch, profiled, batchId, eventEmitter) {
     const prompt = `Score these profiled records.
 Use tool input: {"profiled":[...]}
 Profiled:\n${JSON.stringify(profiled, null, 2)}`;
-    const result = await run(agent, prompt);
+    const result = await runWithRetry(agent, prompt);
     emitAgentToolTelemetry(result, "Risk Scorer Agent", batchId, eventEmitter);
     const scoredFromLlm = extractArray(result.finalOutput, "scored");
     const scored = scoredFromLlm

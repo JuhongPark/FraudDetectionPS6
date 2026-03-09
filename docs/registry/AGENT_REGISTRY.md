@@ -43,6 +43,40 @@ const agent = new Agent({
   - `agent_call_started` ({agent, batch_id, batch_size})
   - `agent_call_finished` ({agent, batch_id, candidates_found, result})
 
+### PatternProfiler
+```javascript
+const agent = new Agent({
+  model: "gpt-5.4",
+  name: "PatternProfilerAgent",
+  instructions: "You are a fraud pattern profiler...",
+  tools: [geoVelocityCheckTool]
+});
+```
+
+- **Behavior**: Enriches candidates with geo-location and channel anomaly signals
+- **Tool**: geoVelocityCheckTool (batch + candidates → profiled with geo_risk/signals)
+- **Fallback**: Rule-based runGeoVelocityCheck() when API fails
+- **Events Emitted**:
+  - `agent_call_started` ({agent, batch_id, candidates_to_profile})
+  - `agent_call_finished` ({agent, batch_id, profiled})
+
+### RiskScorer
+```javascript
+const agent = new Agent({
+  model: "gpt-5.4",
+  name: "RiskScorerAgent",
+  instructions: "You are a fraud risk scorer...",
+  tools: [riskScoreTool]
+});
+```
+
+- **Behavior**: Assigns numeric risk scores and priority levels (low/medium/high) to profiled candidates
+- **Tool**: riskScoreTool (profiled → scored with risk_score/priority)
+- **Fallback**: Rule-based runRiskScore() when API fails
+- **Events Emitted**:
+  - `agent_call_started` ({agent, batch_id, records_to_score})
+  - `agent_call_finished` ({agent, batch_id, scored})
+
 ### EvidenceAuditor
 ```javascript
 const agent = new Agent({
@@ -67,3 +101,4 @@ const agent = new Agent({
 | 2026-03-07 | Initial registry template created | Copilot |
 | 2026-03-08 | Migrated to Node.js/JavaScript with @openai/agents | Copilot |
 | 2026-03-08 | Added Agent class references and tool configuration | Copilot |
+| 2026-03-08 | Added PatternProfiler and RiskScorer creation details | Copilot |

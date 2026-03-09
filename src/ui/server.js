@@ -20,6 +20,7 @@ const config = {
 fs.mkdirSync(path.dirname(config.inputFile), { recursive: true });
 
 // State management
+const MAX_EVENTS = 500;
 let appState = {
   running: false,
   events: [],
@@ -29,104 +30,32 @@ let appState = {
 // Initialize pipeline
 const pipeline = new FraudPipeline(config);
 
+// Bounded event collector
+function pushEvent(type, payload) {
+  appState.events.push({
+    id: appState.events.length,
+    ts: Date.now() / 1000,
+    type,
+    payload,
+  });
+  if (appState.events.length > MAX_EVENTS) {
+    appState.events = appState.events.slice(-MAX_EVENTS);
+  }
+}
+
 // Collect events
-pipeline.on("pipeline_started", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "pipeline_started",
-    payload: { batch_id: "pipeline", ...data },
-  });
-});
-
-pipeline.on("batch_started", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "batch_started",
-    payload: data,
-  });
-});
-
-pipeline.on("agent_call_started", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "agent_call_started",
-    payload: data,
-  });
-});
-
-pipeline.on("agent_call_finished", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "agent_call_finished",
-    payload: data,
-  });
-});
-
-pipeline.on("suspicious_found", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "suspicious_found",
-    payload: data,
-  });
-});
-
-pipeline.on("batch_finished", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "batch_finished",
-    payload: data,
-  });
-});
-
-pipeline.on("batch_failed", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "batch_failed",
-    payload: data,
-  });
-});
-
-pipeline.on("tool_call_started", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "tool_call_started",
-    payload: data,
-  });
-});
-
-pipeline.on("tool_call_finished", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "tool_call_finished",
-    payload: data,
-  });
-});
-
-pipeline.on("tool_executed", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "tool_executed",
-    payload: data,
-  });
-});
-
+pipeline.on("pipeline_started", (data) => pushEvent("pipeline_started", { batch_id: "pipeline", ...data }));
+pipeline.on("batch_started", (data) => pushEvent("batch_started", data));
+pipeline.on("agent_call_started", (data) => pushEvent("agent_call_started", data));
+pipeline.on("agent_call_finished", (data) => pushEvent("agent_call_finished", data));
+pipeline.on("suspicious_found", (data) => pushEvent("suspicious_found", data));
+pipeline.on("batch_finished", (data) => pushEvent("batch_finished", data));
+pipeline.on("batch_failed", (data) => pushEvent("batch_failed", data));
+pipeline.on("tool_call_started", (data) => pushEvent("tool_call_started", data));
+pipeline.on("tool_call_finished", (data) => pushEvent("tool_call_finished", data));
+pipeline.on("tool_executed", (data) => pushEvent("tool_executed", data));
 pipeline.on("pipeline_finished", (data) => {
-  appState.events.push({
-    id: appState.events.length,
-    ts: Date.now() / 1000,
-    type: "pipeline_finished",
-    payload: data,
-  });
+  pushEvent("pipeline_finished", data);
   appState.running = false;
 });
 
