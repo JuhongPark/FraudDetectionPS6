@@ -7,6 +7,9 @@ const fs = require("fs");
 const path = require("path");
 const { tool } = require("@openai/agents");
 
+// Single-writer queue to prevent race conditions on file writes (PLAN §7)
+let writeQueue = Promise.resolve();
+
 async function analyzeTransactionPatterns(input) {
   const { transactions, analysis_type } = input;
 
@@ -25,20 +28,31 @@ async function writeSuspiciousTransactions(input) {
     ? path.resolve(output_file)
     : path.join(__dirname, "../../data/suspiciousTransactions.json");
 
-  const existing = fs.existsSync(suspiciousFile)
-    ? JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"))
-    : [];
+  // Enqueue to single-writer queue (PLAN §7: avoid race conditions)
+  const result = await new Promise((resolve, reject) => {
+    writeQueue = writeQueue.then(() => {
+      try {
+        const existing = fs.existsSync(suspiciousFile)
+          ? JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"))
+          : [];
 
-  const all = [...existing, ...transactions];
-  const deduped = Array.from(new Map(all.map((t) => [t.id, t])).values());
+        const all = [...existing, ...transactions];
+        const deduped = Array.from(new Map(all.map((t) => [t.id, t])).values());
 
-  fs.writeFileSync(suspiciousFile, JSON.stringify(deduped, null, 2));
+        fs.writeFileSync(suspiciousFile, JSON.stringify(deduped, null, 2));
 
-  return {
-    tool: "suspiciousTransactions",
-    written: transactions.length,
-    total: deduped.length,
-  };
+        resolve({
+          tool: "suspiciousTransactions",
+          written: transactions.length,
+          total: deduped.length,
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+
+  return result;
 }
 
 async function streamUiEvent(input, eventEmitter) {

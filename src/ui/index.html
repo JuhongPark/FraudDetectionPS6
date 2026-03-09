@@ -492,6 +492,28 @@
       padding: 16px;
       margin-bottom: 24px;
     }
+    .timeline-filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+    .filter-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: white;
+    }
     .timeline-list {
       max-height: 280px;
       overflow-y: auto;
@@ -658,6 +680,12 @@
           <div class="suspicious-header">
             <span>Execution Timeline</span>
           </div>
+          <div class="timeline-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="agent">Agents</button>
+            <button class="filter-btn" data-filter="tool">Tools</button>
+            <button class="filter-btn" data-filter="failure">Failures</button>
+          </div>
           <div class="timeline-list" id="timelineList">
             <div class="empty-state">No events yet</div>
           </div>
@@ -685,6 +713,16 @@
     let seenSuspiciousBatchIds = new Set();
     let lastFlashTs = 0;
     let lastBatchFlashTs = 0;
+    let timelineFilter = 'all';
+
+    // Timeline filter buttons
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        timelineFilter = btn.dataset.filter;
+      });
+    });
 
     function getAgentIcon(type) {
       const icons = {
@@ -800,7 +838,11 @@
               </div>
             </div>
           ` : ''}
-          ${state.lastEventTime ? `<div class="meta-row">Last update: ${state.lastEventTime}</div>` : ''}
+          <div class="meta-row">
+            ${state.batch_size ? `Processed: ${state.batch_size} txns` : ''}
+            ${state.elapsedMs ? ` | Elapsed: ${(state.elapsedMs / 1000).toFixed(1)}s` : ''}
+            ${state.lastEventTime ? ` | Last update: ${state.lastEventTime}` : ''}
+          </div>
           ${state.error ? `<div class="error-note">${state.error}</div>` : ''}
         </div>
       `;
@@ -811,6 +853,9 @@
         batchStates[batchId] = {
           batch_id: batchId,
           status: 'running',
+          batch_size: 0,
+          startTs: 0,
+          elapsedMs: 0,
           signalMinerStatus: 'pending',
           patternProfilerStatus: 'pending',
           riskScorerStatus: 'pending',
@@ -857,8 +902,13 @@
 
       if (type === 'batch_started') {
         state.status = 'running';
+        state.batch_size = payload.size || 0;
+        state.startTs = ts || 0;
       } else if (type === 'batch_finished') {
         state.status = payload.failed ? 'failed' : 'completed';
+        if (state.startTs && ts) {
+          state.elapsedMs = Math.round((ts - state.startTs) * 1000);
+        }
       } else if (type === 'batch_failed') {
         state.status = 'failed';
         state.error = `Batch failed: ${payload.error || 'unknown error'}`;
@@ -1031,14 +1081,27 @@
       return `${type}${batch}`;
     }
 
+    function isFailureEvent(e) {
+      return e.type === 'batch_failed' || (e.type === 'agent_call_finished' && e.payload && e.payload.error);
+    }
+
+    function filterTimelineEvents(events) {
+      if (timelineFilter === 'all') return events;
+      if (timelineFilter === 'agent') return events.filter((e) => e.type.startsWith('agent_call_'));
+      if (timelineFilter === 'tool') return events.filter((e) => e.type.startsWith('tool_'));
+      if (timelineFilter === 'failure') return events.filter(isFailureEvent);
+      return events;
+    }
+
     function renderTimeline(events) {
-      if (!events.length) {
-        timelineList.innerHTML = '<div class="empty-state">No events yet</div>';
+      const filtered = filterTimelineEvents(events);
+      if (!filtered.length) {
+        timelineList.innerHTML = '<div class="empty-state">No events match the current filter</div>';
         return;
       }
-      const recent = events.slice(-80).reverse();
+      const recent = filtered.slice(-80).reverse();
       timelineList.innerHTML = recent.map((e) => {
-        const failure = e.type === 'batch_failed' || (e.type === 'agent_call_finished' && e.payload && e.payload.error);
+        const failure = isFailureEvent(e);
         return `
           <div class="timeline-item ${failure ? 'failure' : ''}">
             <div class="timeline-time">${formatTs(e.ts)}</div>

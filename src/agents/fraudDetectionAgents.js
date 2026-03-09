@@ -421,4 +421,5 @@ module.exports = {
   patternProfilerAgent,
   riskScorerAgent,
   evidenceAuditorAgent,
+  emitAgentToolTelemetry,
 };

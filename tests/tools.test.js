@@ -4,11 +4,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+const { EventEmitter } = require('node:events');
 const {
   writeSuspiciousTransactions,
   runBatchIntegrityAudit,
   runDecisionExplainability,
 } = require('../src/tools/tools');
+const { emitAgentToolTelemetry } = require('../src/agents/fraudDetectionAgents');
 
 test('writeSuspiciousTransactions deduplicates by id', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fraud-tools-'));
@@ -60,4 +62,53 @@ test('runDecisionExplainability returns explanation rows', async () => {
   assert.equal(result.explanations.length, 1);
   assert.equal(result.explanations[0].id, 't1');
   assert.equal(result.explanations[0].priority, 'high');
+});
+
+test('emitAgentToolTelemetry pairs tool_call_started and tool_call_finished by call_id', () => {
+  const ee = new EventEmitter();
+  const started = [];
+  const finished = [];
+  ee.on('tool_call_started', (d) => started.push(d));
+  ee.on('tool_call_finished', (d) => finished.push(d));
+
+  const fakeResult = {
+    newItems: [
+      { type: 'tool_call_item', callId: 'call_abc', name: 'analyze_transaction_patterns', rawItem: {} },
+      { type: 'tool_call_output_item', callId: 'call_abc', name: 'analyze_transaction_patterns', rawItem: {} },
+    ],
+  };
+
+  emitAgentToolTelemetry(fakeResult, 'TestAgent', 'batch-1', ee);
+
+  assert.equal(started.length, 1, 'expected 1 tool_call_started');
+  assert.equal(finished.length, 1, 'expected 1 tool_call_finished');
+  assert.equal(started[0].call_id, 'call_abc');
+  assert.equal(finished[0].call_id, 'call_abc');
+  assert.equal(started[0].call_id, finished[0].call_id, 'call_id must match between start and finish');
+  assert.equal(started[0].source, 'agent_sdk');
+  assert.equal(finished[0].source, 'agent_sdk');
+});
+
+test('emitAgentToolTelemetry pairs multiple tool calls correctly', () => {
+  const ee = new EventEmitter();
+  const started = [];
+  const finished = [];
+  ee.on('tool_call_started', (d) => started.push(d));
+  ee.on('tool_call_finished', (d) => finished.push(d));
+
+  const fakeResult = {
+    newItems: [
+      { type: 'tool_call_item', callId: 'call_1', name: 'toolA', rawItem: {} },
+      { type: 'tool_call_item', callId: 'call_2', name: 'toolA', rawItem: {} },
+      { type: 'tool_call_output_item', callId: 'call_1', name: 'toolA', rawItem: {} },
+      { type: 'tool_call_output_item', callId: 'call_2', name: 'toolA', rawItem: {} },
+    ],
+  };
+
+  emitAgentToolTelemetry(fakeResult, 'TestAgent', 'batch-2', ee);
+
+  assert.equal(started.length, 2);
+  assert.equal(finished.length, 2);
+  assert.equal(finished[0].call_id, 'call_1');
+  assert.equal(finished[1].call_id, 'call_2');
 });
