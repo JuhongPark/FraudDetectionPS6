@@ -13,10 +13,8 @@ It is intentionally separate from `README.md`.
 - ~~Per-batch counters and elapsed time~~ (current)
 - ~~call_id pairing regression test~~ (current)
 - ~~Single-writer queue for file writes~~ (current)
+- ~~Compact mode for batch cards to improve scan speed~~ (current)
 
 ## Remaining Priority
-1. Monitoring UX refinements
-- Add compact mode for batch cards to improve scan speed when many batches exist.
-
-2. Documentation sync
+1. Documentation sync
 - Keep `docs/registry/AGENT_REGISTRY.md` and `docs/registry/TOOLCALL_REGISTRY.md` updated whenever runtime behavior changes.

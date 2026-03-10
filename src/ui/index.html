@@ -117,6 +117,28 @@
       display: flex;
       gap: 12px;
       margin-bottom: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .view-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .view-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
     }
     .main-layout {
       display: grid;
@@ -485,6 +507,30 @@
       color: var(--text-secondary);
       font-size: 11px;
     }
+    .compact-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(80px, 1fr));
+      gap: 8px;
+      margin: 10px 0 8px;
+    }
+    .compact-cell {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .compact-label {
+      color: var(--text-secondary);
+      font-size: 10px;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .compact-value {
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 700;
+    }
     .timeline-section {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -609,6 +655,9 @@
         grid-column: 2 / 3;
         white-space: normal;
       }
+      .compact-row {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -643,9 +692,13 @@
     </div>
 
     <!-- Controls -->
-    <div class="controls">
-      <button id="runBtn" class="btn">▶ Run Pipeline</button>
-    </div>
+      <div class="controls">
+        <button id="runBtn" class="btn">▶ Run Pipeline</button>
+        <div class="view-toggle" aria-label="Batch card density">
+          <button id="detailedViewBtn" class="view-btn active" type="button">Detailed</button>
+          <button id="compactViewBtn" class="view-btn" type="button">Compact</button>
+        </div>
+      </div>
 
     <div class="main-layout">
       <div class="left-column">
@@ -707,6 +760,8 @@
     const failureCountValue = document.getElementById('failureCountValue');
     const timelineList = document.getElementById('timelineList');
     const activityList = document.getElementById('activityList');
+    const detailedViewBtn = document.getElementById('detailedViewBtn');
+    const compactViewBtn = document.getElementById('compactViewBtn');
 
     let batchStates = {};
     let seenSuspiciousIds = new Set();
@@ -714,6 +769,7 @@
     let lastFlashTs = 0;
     let lastBatchFlashTs = 0;
     let timelineFilter = 'all';
+    let viewMode = 'detailed';
 
     // Timeline filter buttons
     document.querySelectorAll('.filter-btn').forEach((btn) => {
@@ -723,6 +779,16 @@
         timelineFilter = btn.dataset.filter;
       });
     });
+
+    function setViewMode(mode) {
+      viewMode = mode === 'compact' ? 'compact' : 'detailed';
+      detailedViewBtn.classList.toggle('active', viewMode === 'detailed');
+      compactViewBtn.classList.toggle('active', viewMode === 'compact');
+      renderBatches([]);
+    }
+
+    detailedViewBtn.addEventListener('click', () => setViewMode('detailed'));
+    compactViewBtn.addEventListener('click', () => setViewMode('compact'));
 
     function getAgentIcon(type) {
       const icons = {
@@ -762,6 +828,20 @@
               ? '⟳ Running'
               : '○ Pending';
       const toolEntries = Object.values(state.toolStates || {});
+      const runningAgents = [
+        state.signalMinerStatus,
+        state.patternProfilerStatus,
+        state.riskScorerStatus,
+        state.auditorStatus,
+      ].filter((s) => s === 'running').length;
+      const failedAgents = [
+        state.signalMinerStatus,
+        state.patternProfilerStatus,
+        state.riskScorerStatus,
+        state.auditorStatus,
+      ].filter((s) => s === 'failed').length;
+      const runningTools = toolEntries.filter((t) => t.status === 'running').length;
+      const failedTools = toolEntries.filter((t) => t.status === 'failed').length;
       const toolRows = toolEntries
         .sort((a, b) => {
           const rank = { running: 0, failed: 1, completed: 2, pending: 3 };
@@ -785,15 +865,23 @@
           `;
         })
         .join('');
-      return `
-        <div class="${cardClass}">
-          <div class="batch-header">
-            <span>${batchId}</span>
-            <div class="batch-status ${statusClass}">
-              ${statusLabel}
-            </div>
+      const compactBody = `
+        <div class="compact-row">
+          <div class="compact-cell">
+            <div class="compact-label">Agents</div>
+            <div class="compact-value">${runningAgents} running${failedAgents ? `, ${failedAgents} failed` : ''}</div>
           </div>
-
+          <div class="compact-cell">
+            <div class="compact-label">Tools</div>
+            <div class="compact-value">${runningTools} running${failedTools ? `, ${failedTools} failed` : ''}</div>
+          </div>
+          <div class="compact-cell">
+            <div class="compact-label">Suspicious</div>
+            <div class="compact-value">${state.confirmed || 0} confirmed</div>
+          </div>
+        </div>
+      `;
+      const detailedBody = `
           <div class="agent-steps">
             <div class="agent-step">
               <div class="agent-icon ${state.signalMinerStatus}">
@@ -838,6 +926,17 @@
               </div>
             </div>
           ` : ''}
+      `;
+      return `
+        <div class="${cardClass}">
+          <div class="batch-header">
+            <span>${batchId}</span>
+            <div class="batch-status ${statusClass}">
+              ${statusLabel}
+            </div>
+          </div>
+
+          ${viewMode === 'compact' ? compactBody : detailedBody}
           <div class="meta-row">
             ${state.batch_size ? `Processed: ${state.batch_size} txns` : ''}
             ${state.elapsedMs ? ` | Elapsed: ${(state.elapsedMs / 1000).toFixed(1)}s` : ''}
@@ -1118,6 +1217,9 @@
           batchIds.add(e.payload.batch_id);
         }
       });
+      if (batchIds.size === 0) {
+        Object.keys(batchStates).forEach((id) => batchIds.add(id));
+      }
 
       const sortedIds = Array.from(batchIds).sort((a, b) => {
         const numA = parseInt(a.split('-')[1]);
