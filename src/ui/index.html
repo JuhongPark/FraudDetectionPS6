@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fraud Detection Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #0f1419;
@@ -23,8 +26,11 @@
 
     body {
       margin: 0;
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      background: var(--bg-dark);
+      font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(91, 156, 245, 0.18), transparent 36%),
+        radial-gradient(circle at 85% 15%, rgba(251, 188, 4, 0.14), transparent 32%),
+        linear-gradient(180deg, #0c1116 0%, #0f1419 100%);
       color: var(--text-primary);
     }
 
@@ -56,7 +62,7 @@
       font-size: 18px;
       letter-spacing: 0.2px;
       margin: 0 0 6px;
-      font-family: 'Monaco', 'Consolas', monospace;
+      font-family: 'IBM Plex Mono', 'Monaco', 'Consolas', monospace;
     }
 
     /* Status Dashboard */
@@ -70,6 +76,30 @@
       border-radius: 12px;
       margin-bottom: 24px;
       flex-wrap: wrap;
+    }
+    .status-progress {
+      width: 100%;
+      margin-top: 2px;
+    }
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #5b9cf5 0%, #34a853 100%);
+      transition: width 0.25s ease-out;
+    }
+    .progress-caption {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
     }
 
     .status-item {
@@ -405,6 +435,52 @@
       padding: 16px;
       margin-bottom: 24px;
     }
+    .riskmap-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .riskmap-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .riskmap-row {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr) 52px;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .riskmap-label {
+      color: var(--text-secondary);
+      font-family: 'IBM Plex Mono', 'Monaco', monospace;
+    }
+    .riskmap-bar {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .riskmap-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #34a853, #fbbc04 65%, #ea4335);
+      transition: width 0.2s ease-out;
+    }
+    .riskmap-fill.failed {
+      background: linear-gradient(90deg, #ea4335, #ea4335);
+    }
+    .riskmap-count {
+      color: var(--text-primary);
+      text-align: right;
+      font-weight: 600;
+    }
 
     .suspicious-header {
       font-weight: 600;
@@ -573,7 +649,7 @@
       background: rgba(0, 0, 0, 0.2);
       font-size: 12px;
       display: grid;
-      grid-template-columns: 86px 1fr;
+      grid-template-columns: 86px 74px 1fr;
       gap: 10px;
     }
     .timeline-item.failure {
@@ -582,7 +658,30 @@
     }
     .timeline-time {
       color: var(--text-secondary);
-      font-family: 'Monaco', monospace;
+      font-family: 'IBM Plex Mono', 'Monaco', monospace;
+    }
+    .timeline-type {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      padding: 0 6px;
+    }
+    .timeline-type.agent { border-color: rgba(91, 156, 245, 0.55); color: #b9d4ff; }
+    .timeline-type.tool { border-color: rgba(52, 168, 83, 0.5); color: #b8ebc4; }
+    .timeline-type.batch { border-color: rgba(251, 188, 4, 0.5); color: #ffe1a4; }
+    .timeline-type.pipeline { border-color: rgba(160, 160, 180, 0.5); color: #d8dce2; }
+    .timeline-type.failure { border-color: rgba(234, 67, 53, 0.6); color: #ffd6d2; background: rgba(234, 67, 53, 0.14); }
+    .timeline-type.system { border-color: rgba(160, 160, 180, 0.5); color: #d8dce2; }
+    .mono {
+      font-family: 'IBM Plex Mono', 'Monaco', 'Consolas', monospace;
     }
     .timeline-text {
       color: var(--text-primary);
@@ -658,6 +757,13 @@
       .compact-row {
         grid-template-columns: 1fr;
       }
+      .timeline-item {
+        grid-template-columns: 74px 58px 1fr;
+        gap: 6px;
+      }
+      .riskmap-row {
+        grid-template-columns: 58px minmax(0, 1fr) 46px;
+      }
     }
   </style>
 </head>
@@ -689,6 +795,12 @@
         <span>Failures:</span>
         <span id="failureCountValue" class="status-value">0</span>
       </div>
+      <div class="status-progress">
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div id="progressCaption" class="progress-caption">Awaiting run</div>
+      </div>
     </div>
 
     <!-- Controls -->
@@ -707,6 +819,16 @@
       </div>
 
       <div class="right-column">
+        <!-- Batch Risk Map -->
+        <div class="riskmap-section">
+          <div class="suspicious-header">
+            <span>Batch Risk Map</span>
+          </div>
+          <div class="riskmap-list" id="batchRiskMap">
+            <div class="empty-state">No batch activity yet</div>
+          </div>
+        </div>
+
         <!-- Suspicious Transactions -->
         <div class="suspicious-section">
           <div class="suspicious-header">
@@ -762,6 +884,9 @@
     const activityList = document.getElementById('activityList');
     const detailedViewBtn = document.getElementById('detailedViewBtn');
     const compactViewBtn = document.getElementById('compactViewBtn');
+    const progressFill = document.getElementById('progressFill');
+    const progressCaption = document.getElementById('progressCaption');
+    const batchRiskMap = document.getElementById('batchRiskMap');
 
     let batchStates = {};
     let seenSuspiciousIds = new Set();
@@ -1146,6 +1271,24 @@
       return new Date(ts * 1000).toLocaleTimeString();
     }
 
+    function inferTotalBatches(data) {
+      const fromResult = Number(data?.last_result?.batch_count || 0);
+      const startedEvent = (data?.pipeline_events || []).find((e) => e.type === 'pipeline_started');
+      const fromPipelineEvent = Number(startedEvent?.payload?.batch_count || 0);
+      const fromSummary = Number(data?.summary?.batch_started || 0);
+      const fromState = Object.keys(batchStates).length;
+      return Math.max(fromResult, fromPipelineEvent, fromSummary, fromState, 0);
+    }
+
+    function getEventKind(event) {
+      if (isFailureEvent(event)) return 'failure';
+      if (event.type.startsWith('agent_call_')) return 'agent';
+      if (event.type.startsWith('tool_')) return 'tool';
+      if (event.type.startsWith('batch_')) return 'batch';
+      if (event.type.startsWith('pipeline_')) return 'pipeline';
+      return 'system';
+    }
+
     function formatTimelineText(event) {
       const { type, payload } = event;
       const batch = payload?.batch_id ? ` [${payload.batch_id}]` : '';
@@ -1200,10 +1343,12 @@
       }
       const recent = filtered.slice(-80).reverse();
       timelineList.innerHTML = recent.map((e) => {
-        const failure = isFailureEvent(e);
+        const kind = getEventKind(e);
+        const failure = kind === 'failure';
         return `
           <div class="timeline-item ${failure ? 'failure' : ''}">
             <div class="timeline-time">${formatTs(e.ts)}</div>
+            <div class="timeline-type ${kind}">${kind}</div>
             <div class="timeline-text">${formatTimelineText(e)}</div>
           </div>
         `;
@@ -1221,7 +1366,12 @@
         Object.keys(batchStates).forEach((id) => batchIds.add(id));
       }
 
+      const statusRank = { failed: 0, running: 1, completed: 2, pending: 3 };
       const sortedIds = Array.from(batchIds).sort((a, b) => {
+        const stateA = batchStates[a] || { status: 'pending' };
+        const stateB = batchStates[b] || { status: 'pending' };
+        const rankDelta = (statusRank[stateA.status] ?? 9) - (statusRank[stateB.status] ?? 9);
+        if (rankDelta !== 0) return rankDelta;
         const numA = parseInt(a.split('-')[1]);
         const numB = parseInt(b.split('-')[1]);
         return numA - numB;
@@ -1229,13 +1379,56 @@
 
       const now = Date.now();
       batchesContainer.innerHTML = sortedIds.map((id) => {
-        const state = batchStates[id];
+        const state = batchStates[id] || {
+          status: 'pending',
+          toolStates: {},
+          signalMinerStatus: 'pending',
+          patternProfilerStatus: 'pending',
+          riskScorerStatus: 'pending',
+          auditorStatus: 'pending',
+          confirmed: 0,
+          batch_size: 0,
+          elapsedMs: 0,
+          error: ''
+        };
         const suspiciousBatch = (state?.confirmed || 0) > 0;
         const flash = suspiciousBatch && !seenSuspiciousBatchIds.has(id) && now - lastBatchFlashTs > 3000;
         if (flash) lastBatchFlashTs = now;
         if (suspiciousBatch) seenSuspiciousBatchIds.add(id);
         return renderBatchCard(id, state, { suspiciousBatch, flash });
       }).join('');
+    }
+
+    function renderRiskMap(states, totalBatches) {
+      const count = Math.max(totalBatches, Object.keys(states).length);
+      if (!count) {
+        batchRiskMap.innerHTML = '<div class="empty-state">No batch activity yet</div>';
+        return;
+      }
+      let maxConfirmed = 0;
+      for (let i = 1; i <= count; i += 1) {
+        const state = states[`batch-${i}`];
+        maxConfirmed = Math.max(maxConfirmed, Number(state?.confirmed || 0));
+      }
+      const divisor = Math.max(maxConfirmed, 1);
+      const rows = [];
+      for (let i = 1; i <= count; i += 1) {
+        const key = `batch-${i}`;
+        const state = states[key] || {};
+        const confirmed = Number(state.confirmed || 0);
+        const width = Math.max(6, Math.round((confirmed / divisor) * 100));
+        const failedClass = state.status === 'failed' ? 'failed' : '';
+        rows.push(`
+          <div class="riskmap-row">
+            <div class="riskmap-label">${key}</div>
+            <div class="riskmap-bar">
+              <div class="riskmap-fill ${failedClass}" style="width:${confirmed > 0 || state.status === 'failed' ? width : 0}%"></div>
+            </div>
+            <div class="riskmap-count">${state.status === 'failed' ? 'FAIL' : confirmed}</div>
+          </div>
+        `);
+      }
+      batchRiskMap.innerHTML = rows.join('');
     }
 
     function renderSuspicious(items) {
@@ -1267,37 +1460,51 @@
     }
 
     async function refresh() {
-      const res = await fetch('/api/status');
-      const data = await res.json();
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
 
-      // Update status
-      const isRunning = data.running;
-      if (isRunning) {
-        statusIndicator.classList.add('running');
-        statusValue.textContent = 'Running';
-      } else {
+        // Update status
+        const isRunning = data.running;
+        if (isRunning) {
+          statusIndicator.classList.add('running');
+          statusValue.textContent = 'Running';
+        } else {
+          statusIndicator.classList.remove('running');
+          statusValue.textContent = 'Idle';
+        }
+        runBtn.disabled = isRunning;
+
+        // Update progress
+        const batchFinished = data.summary.batch_finished || 0;
+        const batchCount = inferTotalBatches(data);
+        progressValue.textContent = `${batchFinished}/${batchCount}`;
+        failureCountValue.textContent = data.summary.failures || 0;
+        const pct = batchCount ? Math.min(100, Math.round((batchFinished / batchCount) * 100)) : 0;
+        progressFill.style.width = `${pct}%`;
+        if (batchCount === 0) {
+          progressCaption.textContent = isRunning ? 'Run started, waiting for batch metadata...' : 'Awaiting run';
+        } else {
+          progressCaption.textContent = `${pct}% complete • ${batchCount - batchFinished} batch(es) remaining`;
+        }
+
+        // Process events
+        (data.batch_events || []).forEach(updateBatchState);
+        (data.agent_events || []).forEach(updateBatchState);
+        (data.tool_events || []).forEach(updateBatchState);
+
+        // Render
+        renderBatches(data.batch_events || []);
+        renderRiskMap(batchStates, batchCount);
+        renderActivity(batchStates);
+        renderSuspicious(data.suspicious || []);
+        renderTimeline(data.timeline_events || []);
+      } catch (err) {
         statusIndicator.classList.remove('running');
-        statusValue.textContent = 'Idle';
+        statusValue.textContent = 'Disconnected';
+        progressCaption.textContent = 'Monitoring retrying: /api/status unavailable';
       }
-      runBtn.disabled = isRunning;
-
-      // Update progress
-      const batchFinished = data.summary.batch_finished || 0;
-      const lastResult = data.last_result || {};
-      const batchCount = lastResult.batch_count || 0;
-      progressValue.textContent = `${batchFinished}/${batchCount}`;
-      failureCountValue.textContent = data.summary.failures || 0;
-
-      // Process events
-      (data.batch_events || []).forEach(updateBatchState);
-      (data.agent_events || []).forEach(updateBatchState);
-      (data.tool_events || []).forEach(updateBatchState);
-
-      // Render
-      renderBatches(data.batch_events || []);
-      renderActivity(batchStates);
-      renderSuspicious(data.suspicious || []);
-      renderTimeline(data.timeline_events || []);
     }
 
     runBtn.addEventListener('click', async () => {
