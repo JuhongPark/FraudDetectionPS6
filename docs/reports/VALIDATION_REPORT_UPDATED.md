@@ -1,178 +1,79 @@
-# Fraud Detection System - Updated Validation Report
+# Fraud Detection System - Validation Report (Runtime Synced)
 
-**Date**: 2026-03-08  
-**Status**: ✅ @openai/agents Framework Fully Integrated
+**Date**: 2026-03-12  
+**Status**: Runtime and docs aligned to current implementation
 
-## 1. 스펙 준수 검증 (Specification Compliance)
+## 1. Spec Compliance Check (`docs/spec/SPEC.md`)
 
-| 요구사항 | 상태 | 설명 |
+| Spec Requirement | Status | Runtime Evidence |
 | --- | --- | --- |
-| 100 transactions 생성 | ✅ | `src/scripts/generateTransactions.js` - 100 txns with 15 suspicious |
-| 5 batches of 20 | ✅ | `src/pipeline/fraudPipeline.js` - chunkTransactions(20) |
-| Parallel processing | ✅ | Promise.all() concurrent batch execution |
-| SignalMiner Agent | ✅ | `src/agents/fraudDetectionAgents.js` - @openai/agents Agent |
-| EvidenceAuditor Agent | ✅ | `src/agents/fraudDetectionAgents.js` - @openai/agents Agent |
-| Real-time UI monitoring | ✅ | `src/ui/server.js` + HTML dashboard with polling |
-| OpenAI integration | ✅ | chat.completions with configurable model |
-| suspiciousTransactions Tool | ✅ | `src/tools/tools.js` - Registered & called |
-| Event streaming | ✅ | EventEmitter with multiple event types |
+| Around 100 transactions generated | PASS | `generateTransactions(100)` in `POST /api/run` |
+| Chunking into 5 batches of 20 | PASS | `chunkTransactions(..., batchSize=20)` |
+| Parallel batch processing | PASS | Concurrent workers with bounded `maxWorkers` |
+| Agent/Tool monitoring in UI | PASS | `/api/status` exposes `agent_events`, `tool_events`, `batch_events`, `timeline_events` |
+| Suspicious accumulator single file | PASS | `writeSuspiciousTransactions()` writes and dedups `data/suspiciousTransactions.json` |
+| Near real-time suspicious display | PASS | UI polls `/api/status` every `800ms` and rerenders suspicious list |
+| Aggregation through suspiciousTransactions Tool | PASS | `FraudPipeline.processBatch()` always emits `suspiciousTransactions` tool lifecycle |
 
-**Overall**: ✅ 100% specification compliance
+## 2. Implementation Snapshot
 
----
+### Active Agents
+- Signal Miner Agent
+- Pattern Profiler Agent
+- Risk Scorer Agent
+- Evidence Auditor Agent
 
-## 2. @openai/agents Framework 사용현황 (Usage Status)
+### Active Tools
+- `analyze_transaction_patterns`
+- `geoVelocityCheckTool`
+- `riskScoreTool`
+- `ui_event_stream`
+- `batchIntegrityAuditTool`
+- `decisionExplainabilityTool`
+- `suspiciousTransactions`
 
-### ✅ Now Implemented (이전: Not Used → 현재: Fully Used)
+## 3. Telemetry Quality
 
-| Component | 이전 | 현재 | 변경사항 |
-| --- | --- | --- | --- |
-| **Agent Framework** | Direct OpenAI API | @openai/agents Agent class | New Agent() with model, instructions, tools |
-| **Tool Framework** | Array of objects | Tool objects with input_schema + fn | Proper @openai/agents Tool structure |
-| **Tool Registration** | Defined but unused | Registered in agent.tools[] | Tools bound to Agent constructors |
-| **Tool Execution** | Manual function calls | tool.fn() invocations with proper params | Tool calls tracked in processBatch() |
-| **Event Tracking** | Basic emit | agent_call_started/finished + tool_executed | Comprehensive telemetry |
+### Event coverage
+- Pipeline: `pipeline_started`, `pipeline_finished`, `pipeline_failed`
+- Batch: `batch_started`, `batch_finished`, `batch_failed`
+- Agent: `agent_call_started`, `agent_call_finished`
+- Tool: `tool_call_started`, `tool_call_finished`, `tool_executed`
+- Suspicious feed: `suspicious_found`
 
----
+### Agent SDK tool-call pairing
+- `call_id` start/finish pairing implemented and regression-tested.
 
-## 3. Agent 및 Tool 검증 (Detailed Status)
+## 4. Reliability Controls
 
-### Agents Implementation
+- Transient API retry in agent execution (`MAX_RETRIES=2`).
+- Rule-based fallbacks per agent path when LLM/tool execution fails.
+- Single-writer queue for suspicious file writes to avoid race conditions.
+- Bounded in-memory event retention on server (`MAX_EVENTS=500`).
+- Concurrency bound now enforced via `maxWorkers` (instead of unbounded `Promise.all`).
 
-| Agent | Location | Status | Framework | Tool Integration |
-| --- | --- | --- | --- | --- |
-| SignalMiner | `src/agents/fraudDetectionAgents.js:30-39` | ✅ Implemented | Agent class from @openai/agents | analyzeTransactionPatternsTool |
-| EvidenceAuditor | `src/agents/fraudDetectionAgents.js:44-53` | ✅ Implemented | Agent class from @openai/agents | analyzeTransactionPatternsTool |
+## 5. Test Status (2026-03-12)
 
-### Tools Implementation
+`npm test`
+- `tests/chunking.test.js`: PASS
+- `tests/pipeline.test.js`: PASS
+- `tests/server.test.js`: PASS
+- `tests/tools.test.js`: PASS
 
-| Tool | Location | Status | Framework | Called By |
-| --- | --- | --- | --- | --- |
-| analyze_transaction_patterns | `src/tools/tools.js:5-39` | ✅ Registered | @openai/agents Tool object | SignalMiner, EvidenceAuditor |
-| suspiciousTransactions | `src/tools/tools.js:41-73` | ✅ Registered | @openai/agents Tool object | fraudPipeline.processBatch() |
-| ui_event_stream | `src/tools/tools.js:75-101` | ✅ Registered | @openai/agents Tool object | EventEmitter bridge |
+Summary: 4 passed, 0 failed.
 
----
+## 6. Known Gaps / Non-blocking Improvements
 
-## 4. 코드 구조 변경사항 (Code Architecture Changes)
+- UI transport is polling-based; SSE/WebSocket may improve responsiveness under higher throughput.
+- Validation report should be refreshed whenever telemetry payload fields change.
 
-### New: Tool Definitions (`src/tools/tools.js`)
-```javascript
-const analyzeTransactionPatternsTool = {
-  name: "analyze_transaction_patterns",
-  description: "Analyze transaction data...",
-  input_schema: { /* @openai/agents format */ },
-  fn: async (input) => { /* implementation */ }
-};
-```
+## 7. Conclusion
 
-Status: ✅ Created with proper @openai/agents structure
+Current codebase satisfies the core SPEC scope in `docs/spec/SPEC.md`:
+- demo-sized generation,
+- fixed-size chunking,
+- parallelized processing,
+- single-file suspicious accumulation,
+- and near-real-time monitoring visibility.
 
-### Updated: Agent Creation (`src/agents/fraudDetectionAgents.js`)
-```javascript
-async function createSignalMinerAgent(eventEmitter) {
-  const agent = new Agent({
-    model: MODEL,
-    name: "SignalMiner",
-    instructions: "...",
-    tools: [analyzeTransactionPatternsTool]  // ← Tool registration
-  });
-  return agent;
-}
-```
-
-Status: ✅ Both agents use @openai/agents Agent class
-
-### Updated: Pipeline Tool Calls (`src/pipeline/fraudPipeline.js`)
-```javascript
-const toolResult = await suspiciousTransactionsTool.fn(
-  { transactions: confirmed },
-  this.eventEmitter
-);
-this.eventEmitter.emit("tool_executed", { ... });
-```
-
-Status: ✅ Tool calls properly instrumented
-
-### Updated: Registry (`docs/registry/`)
-- AGENT_REGISTRY.md: ✅ Updated with Agent class references
-- TOOLCALL_REGISTRY.md: ✅ Updated with Tool definitions & call graph
-
----
-
-## 5. 모델 검증 (Model Configuration)
-
-| Item | 이전 | 현재 | 상태 |
-| --- | --- | --- | --- |
-| Model ID | legacy setting | gpt-5.4 | ✅ Valid |
-| Default | hardcoded | OPENAI_MODEL env var | ✅ Configurable |
-| Fallback | N/A | gpt-5.4 | ✅ Safe |
-
----
-
-## 6. 최종 검증 요약 (Final Validation Summary)
-
-### Architecture Compliance
-- ✅ Two-stage adversarial validation (SignalMiner → EvidenceAuditor)
-- ✅ Parallel batch processing (Promise.all)
-- ✅ Agent/Tool separation of concerns
-- ✅ Event-driven telemetry
-
-### @openai/agents Framework
-- ✅ Agent class usage for both agents
-- ✅ Tool object definitions with input_schema
-- ✅ Tool registration in agent.tools[]
-- ✅ Tool execution with proper parameters
-- ✅ fallback rule-based functions when API fails
-
-### Code Quality
-- ✅ async/await for concurrent processing
-- ✅ Error handling with try/catch
-- ✅ EventEmitter for monitoring
-- ✅ Proper error messages
-
-### Testing Readiness
-- ✅ Transaction generation (100 + 15 suspicious)
-- ✅ Batch chunking (5 × 20)
-- ✅ API endpoints ready
-- ✅ Dashboard ready
-
----
-
-## 7. 파일 변경 목록 (Changes Made)
-
-### New Files
-1. `src/tools/tools.js` - Tool definitions with @openai/agents structure
-
-### Modified Files
-1. `src/agents/fraudDetectionAgents.js` - Agent class integration
-2. `src/pipeline/fraudPipeline.js` - Tool execution tracking
-3. `.env.example` - Updated model to gpt-5.4
-4. `docs/registry/AGENT_REGISTRY.md` - JavaScript/Framework documentation
-5. `docs/registry/TOOLCALL_REGISTRY.md` - Tool definitions & call graph
-
----
-
-## 8. 다음 단계 (Next Steps)
-
-1. ✅ Set OPENAI_API_KEY in `.env` file
-2. ✅ Run `npm start` to start server (port 8000)
-3. ✅ Open browser to `http://localhost:8000`
-4. ✅ Click "Run Detection" to execute pipeline
-5. ✅ Monitor agent/tool events in real-time UI
-6. ✅ View suspicious transactions in data/suspiciousTransactions.json
-
----
-
-## 9. 성과 (Achievements)
-
-- ✅ Full @openai/agents framework integration
-- ✅ Proper Agent class usage for both agents
-- ✅ Tool registration and execution tracking
-- ✅ Event-driven architecture with proper telemetry
-- ✅ Fallback mechanisms for API failures
-- ✅ Documentation synchronized with implementation
-- ✅ Model configuration validated and fixed
-- ✅ 100% specification compliance maintained
-
-**Overall Status**: 🎉 **FULLY COMPLIANT** - @openai/agents framework properly integrated and operational
+The document is now synced to runtime behavior and avoids deprecated API-shape descriptions.

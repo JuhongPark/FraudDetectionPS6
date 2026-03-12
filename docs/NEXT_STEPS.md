@@ -14,7 +14,12 @@ It is intentionally separate from `README.md`.
 - ~~call_id pairing regression test~~ (current)
 - ~~Single-writer queue for file writes~~ (current)
 - ~~Compact mode for batch cards to improve scan speed~~ (current)
+- ~~Validation report and registry docs synced to runtime payloads~~ (current)
 
 ## Remaining Priority
-1. Documentation sync
+1. Documentation sync (continuous)
 - Keep `docs/registry/AGENT_REGISTRY.md` and `docs/registry/TOOLCALL_REGISTRY.md` updated whenever runtime behavior changes.
+- Keep `docs/reports/VALIDATION_REPORT_UPDATED.md` aligned with current code (tool API shape, active agents, telemetry fields).
+
+2. Scale-readiness
+- If batch count increases beyond current demo scope, consider moving from polling to SSE/WebSocket for lower UI latency under high event volume.

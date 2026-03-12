@@ -1,119 +1,59 @@
 # Tool Call Registry
 
-Source of truth for all tool definitions and calls used in this project.
-Uses @openai/agents framework Tool system with OpenAI API backend.
+Source of truth for tool definitions and tool-call telemetry used in this project.
 
 ## Technology Stack
-- **Framework**: @openai/agents@0.5.4
-- **Tool Implementation**: Custom tool objects with input_schema and fn()
-- **Tool Location**: `src/tools/tools.js`
+- Framework: `@openai/agents@0.5.4`
+- Tool API shape in code: `tool({ name, description, parameters, strict, execute })`
+- Tool definitions location: `src/tools/tools.js`
 
 ## Rules
 - Keep only tool entries in this file.
-- Do not document agents here (see AGENT_REGISTRY.md)
-- Update this file whenever a tool is added, removed, renamed, or payload changes
-- All tools follow @openai/agents Tool object specification
+- Do not document agent inventory here.
+- Update this file whenever a tool is added, removed, renamed, or event payload changes.
 
 ## Tool Inventory
 
-| Tool Name | Location | Purpose | Called By | Input Schema | Output Schema | Telemetry Events | Status |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| analyze_transaction_patterns | `src/tools/tools.js` | Pattern analysis for fraud detection | SignalMiner, EvidenceAuditor | transactions[], analysis_type | candidates[] \| confirmed[] | agent_call_started, agent_call_finished | active |
-| geoVelocityCheckTool | `src/tools/tools.js` | Add geo/channel anomaly signals to candidates | PatternProfiler | batch[], candidates[] | profiled[] | agent_call_started, agent_call_finished | active |
-| riskScoreTool | `src/tools/tools.js` | Compute candidate risk score and priority | RiskScorer | profiled[] | scored[] | agent_call_started, agent_call_finished | active |
-| batchIntegrityAuditTool | `src/tools/tools.js` | Audit lineage consistency across pipeline stages | fraudPipeline.processBatch() | batch[], candidates[], profiled[], scored[], confirmed[] | audit{} | tool_call_started, tool_call_finished, tool_executed | active |
-| decisionExplainabilityTool | `src/tools/tools.js` | Build compact explanation rows for confirmed decisions | fraudPipeline.processBatch() | confirmed[], scored[] | explanations[] | tool_call_started, tool_call_finished, tool_executed | active |
-| suspiciousTransactions | `src/tools/tools.js` | Persist suspicious transactions to file | fraudPipeline.processBatch() | transactions[] | {written, total} | tool_call_started, tool_call_finished, tool_executed | active |
-| ui_event_stream | `src/tools/tools.js` | Stream events to UI dashboard | EventEmitter | event_type, payload | {status, event} | Various events | active |
+| Tool Name | Location | Called By | Purpose | Input | Output | Telemetry |
+| --- | --- | --- | --- | --- | --- | --- |
+| `analyze_transaction_patterns` | `src/tools/tools.js` | Signal Miner Agent, Evidence Auditor Agent (via agent SDK) | Broad/precision fraud pattern analysis | `{transactions, analysis_type}` | `{candidates}` or `{confirmed}` | `tool_call_started/finished` (`source=agent_sdk`) |
+| `geoVelocityCheckTool` | `src/tools/tools.js` | Pattern Profiler Agent (via agent SDK), fallback direct function | Geo/channel enrichment | `{batch, candidates}` | `{profiled}` | `tool_call_started/finished` (`source=agent_sdk`) |
+| `riskScoreTool` | `src/tools/tools.js` | Risk Scorer Agent (via agent SDK), fallback direct function | Risk scoring and priority | `{profiled}` | `{scored}` | `tool_call_started/finished` (`source=agent_sdk`) |
+| `ui_event_stream` | `src/tools/tools.js` | `FraudPipeline.processBatch()` | Emit UI heartbeat event | `{event_type, payload}` | `{status, event}` | `tool_call_started`, `tool_call_finished`, `tool_executed` |
+| `batchIntegrityAuditTool` | `src/tools/tools.js` | `FraudPipeline.processBatch()` | Verify ID lineage consistency | `{batch, candidates, profiled, scored, confirmed}` | `{audit}` | `tool_call_started`, `tool_call_finished`, `tool_executed` |
+| `decisionExplainabilityTool` | `src/tools/tools.js` | `FraudPipeline.processBatch()` | Build compact explanations | `{confirmed, scored}` | `{explanations}` | `tool_call_started`, `tool_call_finished`, `tool_executed` |
+| `suspiciousTransactions` | `src/tools/tools.js` | `FraudPipeline.processBatch()` | Persist suspicious rows to file | `{transactions, output_file}` | `{tool, written, total}` | `tool_call_started`, `tool_call_finished`, `tool_executed` |
 
-## Tool Definitions
+## Telemetry Payloads (Pipeline-managed Tools)
 
-### analyze_transaction_patterns
-```javascript
-{
-  name: "analyze_transaction_patterns",
-  description: "Analyze transaction data to find suspicious patterns",
-  input_schema: {
-    type: "object",
-    properties: {
-      transactions: { type: "array", items: { type: "object" } },
-      analysis_type: { type: "string", enum: ["broad_detection", "precision_validation"] }
-    }
-  },
-  fn: async (input) => { /* pattern analysis logic */ }
-}
-```
+### `tool_call_started`
+- Common: `batch_id`, `tool`, `tool_label`, `activity`
+- `suspiciousTransactions`: includes `record_count`
 
-- **Inputs**: Array of transactions + analysis type
-- **Outputs**: {candidates: [{id, reason}]} for broad OR {confirmed: [{id, reason}]} for strict
-- **Called By**: SignalMiner (broad), EvidenceAuditor (strict)
-- **Error Handling**: Throws to trigger agent fallback
+### `tool_call_finished`
+- Common: `batch_id`, `tool`, `tool_label`, `activity`
+- `ui_event_stream`: includes `status`
+- `batchIntegrityAuditTool`: includes `chain_consistent`
+- `decisionExplainabilityTool`: includes `explanation_count`
+- `suspiciousTransactions`: includes `written`, `total`
 
-### suspiciousTransactions
-```javascript
-{
-  name: "suspiciousTransactions",
-  description: "Store and persist suspicious transactions",
-  input_schema: {
-    type: "object",
-    properties: {
-      transactions: { type: "array", items: { type: "object" } }
-    }
-  },
-  fn: async (input, eventEmitter) => { /* file write logic */ }
-}
-```
-
-- **Inputs**: Array of {id, reason} transactions
-- **Outputs**: {tool, written, total}
-- **Called By**: fraudPipeline.processBatch()
-- **File**: `data/suspiciousTransactions.json` (deduplicated)
-- **Events**: tool_call_started, tool_call_finished, tool_executed
-
-### ui_event_stream
-```javascript
-{
-  name: "ui_event_stream",
-  description: "Stream events to the monitoring UI",
-  input_schema: {
-    type: "object",
-    properties: {
-      event_type: { type: "string" },
-      payload: { type: "object" }
-    }
-  },
-  fn: async (input, eventEmitter) => { /* event emission logic */ }
-}
-```
-
-- **Inputs**: event_type + payload object
-- **Outputs**: {status, event}
-- **Called By**: Pipeline event handlers
-- **Events**: Dynamic per event_type (agent_call_started, batch_finished, etc.)
+### `tool_call_started` / `tool_call_finished` (Agent SDK emitted)
+- Common: `timestamp`, `batch_id`, `source: "agent_sdk"`, `agent`, `tool`, `tool_label`, `call_id`, `activity`
 
 ## Call Graph
 
-```
-FraudPipeline.run()
-  └─> processBatch(batch, index)
-      ├─> signalMinerAgent()
-      │   └─> analyze_transaction_patterns(broad)
-      ├─> patternProfilerAgent()
-      │   └─> geoVelocityCheckTool()
-      ├─> riskScorerAgent()
-      │   └─> riskScoreTool()
-      ├─> evidenceAuditorAgent()
-      │   └─> analyze_transaction_patterns(strict)
-      ├─> batchIntegrityAuditTool()
-      ├─> decisionExplainabilityTool()
-      └─> suspiciousTransactionsTool.fn()
-          └─> [WRITE] data/suspiciousTransactions.json
-```
+`FraudPipeline.run()`
+-> `processBatch(batch)`
+-> `Signal Miner Agent` -> `analyze_transaction_patterns`
+-> `Pattern Profiler Agent` -> `geoVelocityCheckTool`
+-> `Risk Scorer Agent` -> `riskScoreTool`
+-> `Evidence Auditor Agent` -> `analyze_transaction_patterns`
+-> `batchIntegrityAuditTool`
+-> `decisionExplainabilityTool`
+-> `suspiciousTransactions` (writes `data/suspiciousTransactions.json`)
 
 ## Change Log
 
-| Date | Change | Updated By |
-| --- | --- | --- |
-| 2026-03-07 | Initial registry template created | Copilot |
-| 2026-03-08 | Migrated to Node.js with @openai/agents Tool framework | Copilot |
-| 2026-03-08 | Added tool definitions, call graph, and @openai/agents structure | Copilot |
+| Date | Change |
+| --- | --- |
+| 2026-03-12 | Synced tool API shape (`parameters/execute`) and telemetry fields to runtime |

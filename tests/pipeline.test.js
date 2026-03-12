@@ -138,3 +138,48 @@ test('pipeline still executes all tools even when no suspicious records are conf
   assert.equal(events.explain_tool_call_finished, 5);
   assert.equal(suspicious.length, 0);
 });
+
+test('pipeline respects maxWorkers concurrency bound', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fraud-pipeline-workers-'));
+  const inputFile = path.join(tmpDir, 'input.json');
+  const suspiciousFile = path.join(tmpDir, 'suspicious.json');
+
+  const txns = Array.from({ length: 100 }, (_, i) => ({
+    id: `t${i + 1}`,
+    amount: 10 + i,
+    merchant: 'm',
+    location: 'us',
+    channel: 'pos',
+  }));
+  fs.writeFileSync(inputFile, JSON.stringify(txns, null, 2));
+
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const fakeSignalMiner = async () => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await wait(25);
+    inFlight -= 1;
+    return [];
+  };
+  const fakePatternProfiler = async () => [];
+  const fakeRiskScorer = async () => [];
+  const fakeEvidence = async () => [];
+
+  const pipeline = new FraudPipeline(
+    { inputFile, suspiciousFile, batchSize: 20, maxWorkers: 2 },
+    {
+      signalMinerAgent: fakeSignalMiner,
+      patternProfilerAgent: fakePatternProfiler,
+      riskScorerAgent: fakeRiskScorer,
+      evidenceAuditorAgent: fakeEvidence,
+    }
+  );
+
+  const result = await pipeline.run();
+
+  assert.equal(result.batch_count, 5);
+  assert.ok(maxInFlight <= 2, `expected max concurrent batches <= 2, got ${maxInFlight}`);
+});

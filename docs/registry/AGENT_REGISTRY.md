@@ -1,104 +1,48 @@
 # Agent Registry
 
 Source of truth for all active agents used in this project.
-Using @openai/agents framework with OpenAI chat API backend.
 
 ## Technology Stack
-- **Runtime**: Node.js (JavaScript/CommonJS)
-- **Framework**: @openai/agents@0.5.4
-- **API**: @openai/agents `run()` orchestration
-- **Model**: gpt-5.4 (configurable via OPENAI_MODEL env var)
+- Runtime: Node.js (CommonJS)
+- Framework: `@openai/agents@0.5.4`
+- Agent runner: `run(agent, prompt)` from `@openai/agents`
+- Default model: `gpt-5.4` (`OPENAI_MODEL` override supported)
 
 ## Rules
 - Keep only agent entries in this file.
-- Do not document tool calls here.
-- Update this file whenever an agent is added, removed, or its role changes.
-- All agents use Agent class from @openai/agents framework
+- Do not document tool-only implementation details here.
+- Update this file whenever an agent is added, removed, renamed, or event payload changes.
 
 ## Agent Inventory
 
-| Agent Name | Location | Framework | Role | Trigger Condition | Inputs | Outputs | Status |
+| Runtime Label (`payload.agent`) | Constructor Name | Location | Role | Trigger | Inputs | Outputs | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| SignalMiner | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Broad fraud detection | Batch received (size=20) | Batch transactions (JSON) | Array of {id, reason} candidates | active |
-| PatternProfiler | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Candidate enrichment with geo/channel signals | Candidates produced | Batch + candidate list | Array of profiled candidates with geo_risk/signals | active |
-| RiskScorer | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Candidate risk scoring and priority | Profiled candidates ready | Profiled candidate list | Array with risk_score/priority | active |
-| EvidenceAuditor | `src/agents/fraudDetectionAgents.js` | @openai/agents Agent | Strict fraud validation | Candidate list available | Batch + candidate records | Array of {id, reason} confirmed | active |
+| Signal Miner Agent | `SignalMinerAgent` | `src/agents/fraudDetectionAgents.js` | Broad candidate detection | `processBatch()` start | Batch transactions | `{id, reason}[]` candidates | active |
+| Pattern Profiler Agent | `PatternProfilerAgent` | `src/agents/fraudDetectionAgents.js` | Candidate enrichment (geo/channel signals) | Signal Miner result | Batch + candidates | Profiled candidate rows | active |
+| Risk Scorer Agent | `RiskScorerAgent` | `src/agents/fraudDetectionAgents.js` | Risk score and priority assignment | Pattern Profiler result | Profiled rows | Scored rows (`risk_score`, `priority`) | active |
+| Evidence Auditor Agent | `EvidenceAuditorAgent` | `src/agents/fraudDetectionAgents.js` | Precision confirmation | Risk Scorer result | Batch + scored rows | `{id, reason}[]` confirmed | active |
 
-## Agent Creation Details
+## Event Payloads (Current Runtime)
 
-### SignalMiner
-```javascript
-const agent = new Agent({
-  model: "gpt-5.4",
-  name: "SignalMiner",
-  instructions: "Identify ANY suspicious transaction patterns...",
-  tools: [analyzeTransactionPatternsTool]
-});
-```
+### `agent_call_started`
+- Common fields: `timestamp`, `agent`, `batch_id`, `activity`
+- Agent-specific fields:
+  - Signal Miner Agent: `batch_size`
+  - Pattern Profiler Agent: `candidates_to_profile`
+  - Risk Scorer Agent: `records_to_score`
+  - Evidence Auditor Agent: `candidates_to_verify`
 
-- **Behavior**: Inclusive detection, high recall, flagged uncertainties
-- **Tool**: analyzeTransactionPatternsTool with analysis_type="broad_detection"
-- **Fallback**: Rule-based fallbackSignalMiner() when API fails
-- **Events Emitted**:
-  - `agent_call_started` ({agent, batch_id, batch_size})
-  - `agent_call_finished` ({agent, batch_id, candidates_found, result})
-
-### PatternProfiler
-```javascript
-const agent = new Agent({
-  model: "gpt-5.4",
-  name: "PatternProfilerAgent",
-  instructions: "You are a fraud pattern profiler...",
-  tools: [geoVelocityCheckTool]
-});
-```
-
-- **Behavior**: Enriches candidates with geo-location and channel anomaly signals
-- **Tool**: geoVelocityCheckTool (batch + candidates → profiled with geo_risk/signals)
-- **Fallback**: Rule-based runGeoVelocityCheck() when API fails
-- **Events Emitted**:
-  - `agent_call_started` ({agent, batch_id, candidates_to_profile})
-  - `agent_call_finished` ({agent, batch_id, profiled})
-
-### RiskScorer
-```javascript
-const agent = new Agent({
-  model: "gpt-5.4",
-  name: "RiskScorerAgent",
-  instructions: "You are a fraud risk scorer...",
-  tools: [riskScoreTool]
-});
-```
-
-- **Behavior**: Assigns numeric risk scores and priority levels (low/medium/high) to profiled candidates
-- **Tool**: riskScoreTool (profiled → scored with risk_score/priority)
-- **Fallback**: Rule-based runRiskScore() when API fails
-- **Events Emitted**:
-  - `agent_call_started` ({agent, batch_id, records_to_score})
-  - `agent_call_finished` ({agent, batch_id, scored})
-
-### EvidenceAuditor
-```javascript
-const agent = new Agent({
-  model: "gpt-5.4",
-  name: "EvidenceAuditor",
-  instructions: "Verify suspended transactions with strong evidence...",
-  tools: [analyzeTransactionPatternsTool]
-});
-```
-
-- **Behavior**: Conservative validation, high precision, confirmed fraud only
-- **Tool**: analyzeTransactionPatternsTool with analysis_type="precision_validation"
-- **Fallback**: Rule-based fallbackEvidenceAuditor() when API fails
-- **Events Emitted**:
-  - `agent_call_started` ({agent, batch_id, candidates_to_verify})
-  - `agent_call_finished` ({agent, batch_id, confirmed_fraud, result})
+### `agent_call_finished`
+- Common fields: `timestamp` (success path), `agent`, `batch_id`
+- Success fields:
+  - Signal Miner Agent: `candidates`, `result`, `activity`
+  - Pattern Profiler Agent: `profiled`, `activity`
+  - Risk Scorer Agent: `scored`, `activity`
+  - Evidence Auditor Agent: `confirmed`, `result`, `activity`
+- Error fields (fallback path): `error`, `using_fallback: true`
 
 ## Change Log
 
-| Date | Change | Updated By |
-| --- | --- | --- |
-| 2026-03-07 | Initial registry template created | Copilot |
-| 2026-03-08 | Migrated to Node.js/JavaScript with @openai/agents | Copilot |
-| 2026-03-08 | Added Agent class references and tool configuration | Copilot |
-| 2026-03-08 | Added PatternProfiler and RiskScorer creation details | Copilot |
+| Date | Change |
+| --- | --- |
+| 2026-03-12 | Synced registry names and payload fields to runtime implementation |

@@ -55,20 +55,36 @@ class FraudPipeline {
     
     const batches = chunkTransactions(transactions, this.config.batchSize);
 
+    const configuredWorkers = Number(this.config.maxWorkers || batches.length);
+    const workerCount = Math.max(
+      1,
+      Math.min(batches.length || 1, Number.isFinite(configuredWorkers) ? configuredWorkers : batches.length)
+    );
+
     this.eventEmitter.emit("pipeline_started", {
       total_transactions: transactions.length,
       batch_count: batches.length,
       batch_size: this.config.batchSize,
+      worker_count: workerCount,
     });
 
     const confirmedAll = [];
 
-    // Process batches in parallel
-    const promises = batches.map((batch, index) =>
-      this.processBatch(batch, index + 1)
-    );
-    
-    const results = await Promise.all(promises);
+    // Process batches with bounded concurrency.
+    const results = new Array(batches.length);
+    let nextBatchIndex = 0;
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (nextBatchIndex < batches.length) {
+        const currentIndex = nextBatchIndex;
+        nextBatchIndex += 1;
+        results[currentIndex] = await this.processBatch(
+          batches[currentIndex],
+          currentIndex + 1
+        );
+      }
+    });
+
+    await Promise.all(workers);
     results.forEach((batchResults) => {
       confirmedAll.push(...batchResults);
     });

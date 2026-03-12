@@ -1,5 +1,3 @@
-const crypto = require('crypto');
-
 function generateTransactions(total = 100) {
   const merchants = [
     "Local Grocery",
