@@ -1535,6 +1535,10 @@
     });
 
     resetDbBtn.addEventListener('click', async () => {
+      const confirmed = window.confirm('Are you sure you want to continue? Data will be lost. Back it up first if you need to keep it.');
+      if (!confirmed) {
+        return;
+      }
       const res = await fetch('/api/reset-db', { method: 'POST' });
       if (!res.ok) {
         statusValue.textContent = res.status === 409 ? 'Busy' : 'Reset failed';
