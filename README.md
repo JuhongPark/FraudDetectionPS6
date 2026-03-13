@@ -32,6 +32,19 @@ The monitoring dashboard shows agent/tool activity and surfaces suspicious trans
 - Agent and tool activity feeds
 - Suspicious transaction accumulation in near real time
 
+## Demo Data
+
+The project includes a demo-data flow built around the request to create around 100 transactions and include a few suspicious transactions in each batch.
+
+To support that, the current implementation does the following:
+
+- Generates 100 transactions automatically when a run starts
+- Seeds a small number of suspicious transactions into every batch of 20
+- Writes the generated input set to `data/generatedTransactions.json`
+- Accumulates confirmed suspicious transactions in `data/suspiciousTransactions.json`
+
+This keeps the demo reproducible while still matching the intended batch-processing workflow.
+
 ## Additional Features
 
 The project also includes a few quality-of-life improvements for demos and debugging:
