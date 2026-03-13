@@ -169,6 +169,15 @@ test("server E2E: /api/run triggers pipeline and /api/status reports all events"
     pipeline.run().then((result) => { appState.lastResult = result; });
   });
 
+  app.post("/api/reset-db", (_req, res) => {
+    if (appState.running) return res.status(409).json({ error: "running" });
+    fs.writeFileSync(inputFile, JSON.stringify([], null, 2));
+    fs.writeFileSync(suspiciousFile, JSON.stringify([], null, 2));
+    appState.events = [];
+    appState.lastResult = null;
+    res.json({ reset: true });
+  });
+
   // Start server on random port
   const server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -208,6 +217,85 @@ test("server E2E: /api/run triggers pipeline and /api/status reports all events"
     const pipelineFinished = data.pipeline_events.filter((e) => e.type === "pipeline_finished");
     assert.equal(pipelineStarted.length, 1, "expected 1 pipeline_started");
     assert.equal(pipelineFinished.length, 1, "expected 1 pipeline_finished");
+  } finally {
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("server E2E: /api/reset-db clears runtime files and status state", async (t) => {
+  const listenAvailable = await canListenOnLoopback();
+  if (!listenAvailable) {
+    t.skip("Loopback listen is not permitted in this environment");
+    return;
+  }
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fraud-server-reset-"));
+  const inputFile = path.join(tmpDir, "input.json");
+  const suspiciousFile = path.join(tmpDir, "suspicious.json");
+  fs.writeFileSync(inputFile, JSON.stringify([{ id: "seed-1" }], null, 2));
+  fs.writeFileSync(suspiciousFile, JSON.stringify([{ id: "flag-1", reason: "seed" }], null, 2));
+
+  const express = require("express");
+  const app = express();
+  app.use(express.json());
+
+  const appState = {
+    running: false,
+    events: [{ id: 0, ts: Date.now() / 1000, type: "pipeline_finished", payload: {} }],
+    lastResult: { suspicious_count: 1 },
+  };
+
+  app.get("/api/status", (_req, res) => {
+    const suspicious = fs.existsSync(suspiciousFile)
+      ? JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"))
+      : [];
+    res.json({
+      running: appState.running,
+      summary: {
+        batch_started: appState.events.filter((e) => e.type === "batch_started").length,
+        batch_finished: appState.events.filter((e) => e.type === "batch_finished").length,
+        suspicious_found: suspicious.length,
+      },
+      agent_events: [],
+      batch_events: [],
+      tool_events: [],
+      pipeline_events: appState.events.filter((e) => e.type.startsWith("pipeline_")),
+      timeline_events: appState.events,
+      suspicious,
+      last_result: appState.lastResult,
+      last_error: null,
+    });
+  });
+
+  app.post("/api/reset-db", (_req, res) => {
+    if (appState.running) return res.status(409).json({ error: "running" });
+    fs.writeFileSync(inputFile, JSON.stringify([], null, 2));
+    fs.writeFileSync(suspiciousFile, JSON.stringify([], null, 2));
+    appState.events = [];
+    appState.lastResult = null;
+    res.json({ reset: true });
+  });
+
+  const server = await new Promise((resolve) => {
+    const s = app.listen(0, "127.0.0.1", () => resolve(s));
+  });
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const resetRes = await httpPost(`${baseUrl}/api/reset-db`);
+    assert.equal(resetRes.status, 200);
+    assert.equal(resetRes.body.reset, true);
+
+    const inputData = JSON.parse(fs.readFileSync(inputFile, "utf-8"));
+    const suspiciousData = JSON.parse(fs.readFileSync(suspiciousFile, "utf-8"));
+    assert.deepEqual(inputData, []);
+    assert.deepEqual(suspiciousData, []);
+
+    const status = await httpGet(`${baseUrl}/api/status`);
+    assert.equal(status.body.summary.suspicious_found, 0);
+    assert.deepEqual(status.body.timeline_events, []);
+    assert.equal(status.body.last_result, null);
   } finally {
     server.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });

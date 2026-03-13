@@ -203,6 +203,16 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+    .btn.secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: none;
+      transform: translateY(-1px);
+    }
 
     /* Batch Grid */
     .batches-grid {
@@ -806,6 +816,7 @@
     <!-- Controls -->
       <div class="controls">
         <button id="runBtn" class="btn">▶ Run Pipeline</button>
+        <button id="resetDbBtn" class="btn secondary" type="button">Reset Test DB</button>
         <div class="view-toggle" aria-label="Batch card density">
           <button id="detailedViewBtn" class="view-btn active" type="button">Detailed</button>
           <button id="compactViewBtn" class="view-btn" type="button">Compact</button>
@@ -871,6 +882,7 @@
 
   <script>
     const runBtn = document.getElementById('runBtn');
+    const resetDbBtn = document.getElementById('resetDbBtn');
     const statusIndicator = document.getElementById('statusIndicator');
     const statusValue = document.getElementById('statusValue');
     const progressValue = document.getElementById('progressValue');
@@ -895,6 +907,14 @@
     let lastBatchFlashTs = 0;
     let timelineFilter = 'all';
     let viewMode = 'detailed';
+
+    function clearUiState() {
+      batchStates = {};
+      seenSuspiciousIds = new Set();
+      seenSuspiciousBatchIds = new Set();
+      lastFlashTs = 0;
+      lastBatchFlashTs = 0;
+    }
 
     // Timeline filter buttons
     document.querySelectorAll('.filter-btn').forEach((btn) => {
@@ -1475,6 +1495,7 @@
           statusValue.textContent = 'Idle';
         }
         runBtn.disabled = isRunning;
+        resetDbBtn.disabled = isRunning;
 
         // Update progress
         const batchFinished = data.summary.batch_finished || 0;
@@ -1509,11 +1530,21 @@
 
     runBtn.addEventListener('click', async () => {
       await fetch('/api/run', { method: 'POST' });
-      batchStates = {};
-      seenSuspiciousIds = new Set();
-      seenSuspiciousBatchIds = new Set();
-      lastFlashTs = 0;
-      lastBatchFlashTs = 0;
+      clearUiState();
+      refresh();
+    });
+
+    resetDbBtn.addEventListener('click', async () => {
+      const res = await fetch('/api/reset-db', { method: 'POST' });
+      if (!res.ok) {
+        statusValue.textContent = res.status === 409 ? 'Busy' : 'Reset failed';
+        return;
+      }
+      clearUiState();
+      progressFill.style.width = '0%';
+      progressValue.textContent = '0/0';
+      progressCaption.textContent = 'Test DB reset to initial empty state';
+      failureCountValue.textContent = '0';
       refresh();
     });
 

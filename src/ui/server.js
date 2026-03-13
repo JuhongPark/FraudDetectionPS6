@@ -19,6 +19,11 @@ const config = {
 // Ensure data directory exists
 fs.mkdirSync(path.dirname(config.inputFile), { recursive: true });
 
+function resetRuntimeData() {
+  fs.writeFileSync(config.inputFile, JSON.stringify([], null, 2));
+  fs.writeFileSync(config.suspiciousFile, JSON.stringify([], null, 2));
+}
+
 // State management
 const MAX_EVENTS = 500;
 let appState = {
@@ -139,6 +144,19 @@ app.post("/api/run", async (req, res) => {
       appState.running = false;
       appState.lastError = message;
     });
+});
+
+app.post("/api/reset-db", (req, res) => {
+  if (appState.running) {
+    return res.status(409).json({ error: "Cannot reset while pipeline is running" });
+  }
+
+  resetRuntimeData();
+  appState.events = [];
+  appState.lastResult = null;
+  appState.lastError = null;
+
+  res.json({ reset: true });
 });
 
 function startServer(initialPort) {
