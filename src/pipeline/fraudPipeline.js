@@ -50,8 +50,10 @@ class FraudPipeline {
       fs.readFileSync(this.config.inputFile, "utf-8")
     );
     
-    // Clear suspicious accumulator
-    fs.writeFileSync(this.config.suspiciousFile, JSON.stringify([]));
+    // Preserve suspicious state across runs; only initialize the file if missing.
+    if (!fs.existsSync(this.config.suspiciousFile)) {
+      fs.writeFileSync(this.config.suspiciousFile, JSON.stringify([]));
+    }
     
     const batches = chunkTransactions(transactions, this.config.batchSize);
 
